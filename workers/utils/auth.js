@@ -13,6 +13,15 @@ export function createAccessToken(payload) {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: ACCESS_TTL });
 }
 
+export function verifyAccessToken(token) {
+  try {
+    const payload = jwt.verify(token, JWT_SECRET);
+    return payload;
+  } catch (e) {
+    return null;
+  }
+}
+
 export async function createAndStoreRefreshToken(db, userId) {
   const token = randomUUID();
   const tokenHash = createHash('sha256').update(token).digest('hex');
