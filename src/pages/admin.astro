@@ -1,0 +1,36 @@
+---
+import BaseHead from '../components/BaseHead.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+---
+<html>
+  <head>
+    <BaseHead title="Admin" />
+  </head>
+  <body>
+    <Header />
+    <main class="container">
+      <h1>Admin - Create User</h1>
+      <form id="create-user">
+        <label>Email<br><input name="email" type="email" required></label><br>
+        <label>Name<br><input name="name" type="text"></label><br>
+        <label>Password<br><input name="password" type="password" required></label><br>
+        <button type="submit" class="button">Create user</button>
+      </form>
+      <div id="result" style="margin-top:1rem;color:green"></div>
+    </main>
+    <Footer />
+
+    <script type="module">
+      const form = document.getElementById('create-user');
+      form.addEventListener('submit', async (e)=>{
+        e.preventDefault();
+        const data = new FormData(form);
+        const body = { email: data.get('email'), name: data.get('name'), password: data.get('password') };
+        const res = await fetch('/api/admin/users', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-key': prompt('Enter ADMIN KEY') }, body: JSON.stringify(body) });
+        const j = await res.json();
+        if(res.ok) document.getElementById('result').textContent = 'User created: ' + j.id; else document.getElementById('result').textContent = j.error || 'Error';
+      });
+    </script>
+  </body>
+</html>
