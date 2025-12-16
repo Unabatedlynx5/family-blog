@@ -1,0 +1,55 @@
+---
+import BaseHead from '../components/BaseHead.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+---
+<html>
+  <head>
+    <BaseHead title="Login" />
+  </head>
+  <body>
+    <Header />
+    <main style="max-width:800px;margin:2rem auto;padding:1rem;">
+      <h1>Login</h1>
+      <form id="login-form">
+        <label>
+          Email<br />
+          <input name="email" type="email" required />
+        </label>
+        <br /><br />
+        <label>
+          Password<br />
+          <input name="password" type="password" required />
+        </label>
+        <br /><br />
+        <button type="submit">Sign in</button>
+      </form>
+      <div id="login-status" style="margin-top:1rem;color:crimson"></div>
+    </main>
+    <Footer />
+
+    <script type="module">
+      const form = document.getElementById('login-form');
+      const status = document.getElementById('login-status');
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        status.textContent = '';
+        const data = new FormData(form);
+        const body = { email: data.get('email'), password: data.get('password') };
+        try {
+          const res = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+          const json = await res.json();
+          if (!res.ok) {
+            status.textContent = json.error || 'Login failed';
+            return;
+          }
+          // store access token in memory (simple) and redirect to feed
+          sessionStorage.setItem('accessToken', json.accessToken);
+          window.location.href = '/feed';
+        } catch (err) {
+          status.textContent = 'Network error';
+        }
+      });
+    </script>
+  </body>
+</html>

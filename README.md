@@ -55,6 +55,31 @@ All commands are run from the root of the project, from a terminal:
 | `npm run build && npm run deploy` | Deploy your production site to Cloudflare        |
 | `npm wrangler tail`               | View real-time logs for all Workers              |
 
+## MVP setup (auth, posts, media, chat)
+
+1. Install dependencies and wrangler globally:
+
+   npm install
+   npm i -g wrangler
+
+2. Create Cloudflare resources:
+   - D1 database (family_blog_db)
+   - R2 bucket (family-blog-media)
+   - Durable Object class (GlobalChat) will be created/bound via wrangler
+
+3. Add environment secrets in Cloudflare Pages/Workers settings:
+   - JWT_SECRET (strong random value)
+
+4. Run migrations: copy `migrations/001_init.sql` to D1 or run via wrangler d1 CLI
+
+5. Seed an admin user locally using `node scripts/seed_admin.js you@example.com yourpassword` for local testing.
+
+6. Deploy: `wrangler deploy` (ensure bindings in wrangler.json are correct and secrets are set in Cloudflare environment).
+
+Notes:
+- The MVP is barebones and uses HTTP headers `X-User-Id` for some local flows. Replace with full JWT verification before production.
+- Do not commit secrets to the repo.
+
 ## 👀 Want to learn more?
 
 Check out [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).

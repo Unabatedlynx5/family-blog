@@ -1,0 +1,38 @@
+---
+import BaseHead from '../components/BaseHead.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+---
+<html>
+  <head>
+    <BaseHead title="Chat" />
+  </head>
+  <body>
+    <Header />
+    <main style="max-width:900px;margin:2rem auto;padding:1rem;">
+      <div id="messages" style="height:400px;overflow:auto;border:1px solid #eee;padding:0.5rem;background:#fafafa"></div>
+      <textarea id="msg" rows="2" style="width:100%"></textarea>
+      <button id="send">Send</button>
+    </main>
+    <Footer />
+
+    <script type="module">
+      const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/api/chat/connect`);
+      const messages = document.getElementById('messages');
+      ws.addEventListener('message', (e)=>{
+        const data = JSON.parse(e.data);
+        if(data.type === 'message'){
+          const d = data.message;
+          const el = document.createElement('div');
+          el.textContent = `${d.user_id}: ${d.text}`;
+          messages.appendChild(el);
+        }
+      });
+      document.getElementById('send').addEventListener('click', ()=>{
+        const text = document.getElementById('msg').value;
+        ws.send(JSON.stringify({ user_id: 'LOCAL-ADMIN', text }));
+        document.getElementById('msg').value = '';
+      });
+    </script>
+  </body>
+</html>

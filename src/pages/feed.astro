@@ -1,0 +1,55 @@
+---
+import BaseHead from '../components/BaseHead.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+---
+<html>
+  <head>
+    <BaseHead title="Feed" />
+  </head>
+  <body>
+    <Header />
+    <main style="max-width:900px;margin:2rem auto;padding:1rem;">
+      <section id="composer">
+        <h2>What's new?</h2>
+        <textarea id="content" rows="4" style="width:100%"></textarea>
+        <br />
+        <input id="file" type="file" />
+        <br /><br />
+        <button id="post">Post</button>
+      </section>
+
+      <section id="posts" style="margin-top:2rem;"></section>
+    </main>
+    <Footer />
+
+    <script type="module">
+      async function loadFeed(){
+        const res = await fetch('/api/feed');
+        const json = await res.json();
+        const posts = json.posts || [];
+        const container = document.getElementById('posts');
+        container.innerHTML = '';
+        for(const p of posts){
+          const el = document.createElement('div');
+          el.style.border = '1px solid #eee';
+          el.style.padding = '0.75rem';
+          el.style.marginBottom = '0.5rem';
+          if(p.source === 'markdown'){
+            el.innerHTML = `<strong>${p.filename}</strong><pre style="white-space:pre-wrap;margin:0">${p.content.slice(0,400)}</pre>`
+          } else {
+            el.innerHTML = `<strong>${p.name || p.user_id}</strong><div>${p.content}</div>`
+          }
+          container.appendChild(el);
+        }
+      }
+      document.getElementById('post').addEventListener('click', async ()=>{
+        const content = document.getElementById('content').value;
+        const token = sessionStorage.getItem('accessToken');
+        const res = await fetch('/api/posts', { method:'POST', headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${token}`, 'x-user-id': 'LOCAL-ADMIN' }, body: JSON.stringify({ content }) });
+        if(res.ok) loadFeed();
+      });
+      loadFeed();
+    </script>
+  </body>
+</html>
