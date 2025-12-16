@@ -2,18 +2,109 @@
 import BaseHead from '../components/BaseHead.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
+
+export const prerender = false;
+
+// Check authentication
+const token = Astro.cookies.get('accessToken')?.value;
+if (!token) {
+  return Astro.redirect('/login');
+}
 ---
 <html>
   <head>
-    <BaseHead title="Chat" />
+    <BaseHead title="Family Chat" />
+    <style>
+      .chat-container {
+        max-width: 900px;
+        margin: 2rem auto;
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 200px);
+        background: white;
+        border-radius: 1rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        overflow: hidden;
+      }
+      .chat-header {
+        padding: 1.5rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        font-weight: 700;
+        font-size: 1.25rem;
+      }
+      .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+      .message {
+        display: flex;
+        flex-direction: column;
+        max-width: 70%;
+        padding: 0.75rem 1rem;
+        border-radius: 1rem;
+        background: #f0f0f0;
+      }
+      .message.own {
+        align-self: flex-end;
+        background: #667eea;
+        color: white;
+      }
+      .message-author {
+        font-size: 0.75rem;
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+        opacity: 0.8;
+      }
+      .message-text {
+        word-wrap: break-word;
+      }
+      .message-time {
+        font-size: 0.7rem;
+        opacity: 0.6;
+        margin-top: 0.25rem;
+        text-align: right;
+      }
+      .chat-input-area {
+        padding: 1rem;
+        border-top: 1px solid #e0e0e0;
+        display: flex;
+        gap: 0.5rem;
+      }
+      .chat-input-area textarea {
+        flex: 1;
+        padding: 0.75rem;
+        border: 1px solid #ddd;
+        border-radius: 0.5rem;
+        resize: none;
+        font-family: inherit;
+      }
+      .chat-input-area button {
+        padding: 0.75rem 1.5rem;
+        white-space: nowrap;
+      }
+      .chat-status {
+        padding: 0.5rem 1rem;
+        background: #f0f0f0;
+        text-align: center;
+        font-size: 0.875rem;
+        color: #666;
+      }
+    </style>
   </head>
   <body>
     <Header />
     <main class="container">
-      <div class="chat-window">
-        <div id="messages" class="chat-messages"></div>
-        <div class="chat-input">
-          <textarea id="msg" rows="2" placeholder="Say hello to family..."></textarea>
+      <div class="chat-container">
+        <div class="chat-header">💬 Family Chat</div>
+        <div class="chat-status" id="status">Loading messages...</div>
+        <div class="chat-messages" id="messages"></div>
+        <div class="chat-input-area">
+          <textarea id="msg" rows="2" placeholder="Type your message..."></textarea>
           <button id="send" class="button">Send</button>
         </div>
       </div>
@@ -21,20 +112,119 @@ import Footer from '../components/Footer.astro';
     <Footer />
 
     <script type="module">
-      const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/api/chat/connect`);
-      const messages = document.getElementById('messages');
-      ws.addEventListener('message', (e)=>{
-        const data = JSON.parse(e.data);
-        if(data.type === 'message'){
-          const d = data.message;
-          const el = document.createElement('div');
-          el.textContent = `${d.user_id}: ${d.text}`;
-          messages.appendChild(el);
-          messages.scrollTop = messages.scrollHeight;
+      const messagesContainer = document.getElementById('messages');
+      const statusDiv = document.getElementById('status');
+      const msgInput = document.getElementById('msg');
+      const sendBtn = document.getElementById('send');
+      let currentUserId = null;
+
+      // Load messages
+      async function loadMessages() {
+        try {
+          const res = await fetch('/api/chat/messages');
+          const data = await res.json();
+          
+          if (!res.ok) {
+            statusDiv.textContent = 'Failed to load messages';
+            return;
+          }
+
+          messagesContainer.innerHTML = '';
+          const messages = data.messages || [];
+          
+          messages.forEach(msg => {
+            appendMessage(msg);
+          });
+          
+          statusDiv.textContent = `${messages.length} messages loaded`;
+          setTimeout(() => statusDiv.style.display = 'none', 2000);
+          scrollToBottom();
+        } catch (err) {
+          statusDiv.textContent = 'Error loading messages';
+          console.error(err);
+        }
+      }
+
+      function appendMessage(msg) {
+        const div = document.createElement('div');
+        div.className = 'message';
+        if (msg.user_email === currentUserEmail) {
+          div.classList.add('own');
+        }
+        
+        const time = new Date(msg.created_at * 1000).toLocaleTimeString([], { 
+          hour: '2-digit', 
+          minute: '2-digit' 
+        });
+        
+        div.innerHTML = `
+          <div class="message-author">${msg.user_name || msg.user_email}</div>
+          <div class="message-text">${escapeHtml(msg.message)}</div>
+          <div class="message-time">${time}</div>
+        `;
+        
+        messagesContainer.appendChild(div);
+      }
+
+      function scrollToBottom() {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      }
+
+      function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      }
+
+      // Send message
+      async function sendMessage() {
+        const text = msgInput.value.trim();
+        if (!text) return;
+
+        sendBtn.disabled = true;
+        sendBtn.textContent = 'Sending...';
+
+        try {
+          const res = await fetch('/api/chat/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: text })
+          });
+
+          const data = await res.json();
+          
+          if (!res.ok) {
+            alert(data.error || 'Failed to send message');
+            return;
+          }
+
+          msgInput.value = '';
+          appendMessage(data.message);
+          scrollToBottom();
+        } catch (err) {
+          alert('Error sending message');
+          console.error(err);
+        } finally {
+          sendBtn.disabled = false;
+          sendBtn.textContent = 'Send';
+        }
+      }
+
+      sendBtn.addEventListener('click', sendMessage);
+      msgInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          sendMessage();
         }
       });
-      document.getElementById('send').addEventListener('click', ()=>{
-        const text = document.getElementById('msg').value;
+
+      // Get current user email from a cookie or session
+      const cookies = document.cookie.split(';');
+      let currentUserEmail = null;
+      
+      // Poll for new messages every 3 seconds
+      loadMessages();
+      setInterval(loadMessages, 3000);
         if(!text) return;
         ws.send(JSON.stringify({ user_id: 'LOCAL-ADMIN', text }));
         document.getElementById('msg').value = '';

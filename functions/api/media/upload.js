@@ -4,14 +4,23 @@ export async function post(context) {
   const req = context.request;
   const auth = req.headers.get('authorization') || '';
   const match = auth.match(/Bearer\s+(.+)/);
-  if (!match) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+  if (!match) return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
+    status: 401,
+    headers: { 'Content-Type': 'application/json' }
+  });
   const token = match[1];
-  const payload = verifyAccessToken(token);
-  if (!payload) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+  const payload = verifyAccessToken(token, context.env);
+  if (!payload) return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
+    status: 401,
+    headers: { 'Content-Type': 'application/json' }
+  });
 
   const contentType = req.headers.get('Content-Type') || '';
   if (!contentType.startsWith('multipart/form-data') && !contentType.startsWith('application/octet-stream')) {
-    return new Response(JSON.stringify({ error: 'Invalid content type' }), { status: 400 });
+    return new Response(JSON.stringify({ error: 'Invalid content type' }), { 
+      status: 400,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
   // For MVP: accept raw body and write to R2 with a random key
   const buf = await req.arrayBuffer();
@@ -26,8 +35,15 @@ export async function post(context) {
         .bind(crypto.randomUUID(), userId, key, req.headers.get('Content-Type') || 'application/octet-stream', buf.byteLength, now)
         .run();
     }
-    return new Response(JSON.stringify({ key }), { status: 201 });
+    return new Response(JSON.stringify({ key }), { 
+      status: 201,
+      headers: { 'Content-Type': 'application/json' }
+    });
   } catch (e) {
-    return new Response(JSON.stringify({ error: 'Upload failed' }), { status: 500 });
+    console.error('Upload error:', e);
+    return new Response(JSON.stringify({ error: 'Upload failed' }), { 
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 }

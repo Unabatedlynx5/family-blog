@@ -204,3 +204,16 @@ dist
 
 ### Astro ###
 .astro/
+
+### Testing ###
+# Vitest coverage
+coverage/
+
+# Local database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Test artifacts
+test-results/
+*.test.log

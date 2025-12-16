@@ -2,20 +2,27 @@ import { randomUUID, createHash } from 'crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
+// JWT_SECRET should be set as an environment variable in Cloudflare
+// For local dev, you can use a default, but never commit real secrets
 const ACCESS_TTL = 15 * 60; // 15 minutes
+
+function getJWTSecret(env) {
+  return env?.JWT_SECRET || process.env.JWT_SECRET || 'dev-secret-change-me';
+}
 
 export async function verifyPassword(password, hash) {
   return bcrypt.compare(password, hash);
 }
 
-export function createAccessToken(payload) {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: ACCESS_TTL });
+export function createAccessToken(payload, env) {
+  const secret = getJWTSecret(env);
+  return jwt.sign(payload, secret, { expiresIn: ACCESS_TTL });
 }
 
-export function verifyAccessToken(token) {
+export function verifyAccessToken(token, env) {
   try {
-    const payload = jwt.verify(token, JWT_SECRET);
+    const secret = getJWTSecret(env);
+    const payload = jwt.verify(token, secret);
     return payload;
   } catch (e) {
     return null;

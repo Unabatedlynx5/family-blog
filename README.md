@@ -1,24 +1,38 @@
-# Astro Starter Kit: Blog
+# Family Blog - Private Social Site
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/cloudflare/templates/tree/main/astro-blog-starter-template)
+A private friends and family social site built with Astro and deployed on Cloudflare Pages with Workers, D1, R2, and Durable Objects.
 
-![Astro Template Preview](https://github.com/withastro/astro/assets/2244813/ff10799f-a816-4703-b967-c78997e8323d)
+## Features
 
-<!-- dash-content-start -->
+### Authentication & Security
+- ✅ Password-based authentication with JWT tokens
+- ✅ Refresh token rotation (30-day TTL)
+- ✅ Admin-only account creation
+- ✅ Secure HttpOnly cookies
+- ✅ Bcrypt password hashing
+- ✅ SHA-256 refresh token hashing
 
-Create a blog with Astro and deploy it on Cloudflare Workers as a [static website](https://developers.cloudflare.com/workers/static-assets/).
+### Social Features
+- ✅ Post creation with text and media
+- ✅ Media upload to R2 storage
+- ✅ Feed with pagination
+- ✅ Real-time global chat (WebSocket via Durable Object)
+- ✅ Markdown blog posts (preserved from original template)
 
-Features:
+### Technical Stack
+- ✅ Astro for static site generation
+- ✅ Cloudflare Pages Functions for API endpoints
+- ✅ D1 for database (users, posts, media, refresh tokens)
+- ✅ R2 for media storage
+- ✅ Durable Objects for WebSocket chat
+- ✅ Comprehensive test suite with Vitest
 
-- ✅ Minimal styling (make it your own!)
+### Additional Features
 - ✅ 100/100 Lighthouse performance
 - ✅ SEO-friendly with canonical URLs and OpenGraph data
 - ✅ Sitemap support
 - ✅ RSS Feed support
-- ✅ Markdown & MDX support
 - ✅ Built-in Observability logging
-
-<!-- dash-content-end -->
 
 ## Getting Started
 
@@ -40,49 +54,160 @@ The `src/content/` directory contains "collections" of related Markdown and MDX 
 
 Any static assets, like images, can be placed in the `public/` directory.
 
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js 18+
+- Cloudflare account
+- Wrangler CLI
+
+### Installation
+
+```bash
+# Install dependencies
+npm install
+
+# Install wrangler globally (if not already installed)
+npm i -g wrangler
+```
+
 ## 🧞 Commands
 
-All commands are run from the root of the project, from a terminal:
+| Command                           | Action                                                |
+| :-------------------------------- | :---------------------------------------------------- |
+| `npm install`                     | Installs dependencies                                 |
+| `npm run dev`                     | Starts local dev server at `localhost:4321`           |
+| `npm run build`                   | Build your production site to `./dist/`               |
+| `npm run preview`                 | Preview your build locally with Wrangler              |
+| `npm test`                        | Run test suite                                        |
+| `npm run test:watch`              | Run tests in watch mode                               |
+| `npm run test:coverage`           | Run tests with coverage report                        |
+| `npm run deploy`                  | Deploy your production site to Cloudflare             |
+| `npm run astro ...`               | Run CLI commands like `astro add`, `astro check`      |
+| `npm run cf-typegen`              | Generate TypeScript types from Cloudflare bindings    |
+| `wrangler tail`                   | View real-time logs for all Workers                   |
 
-| Command                           | Action                                           |
-| :-------------------------------- | :----------------------------------------------- |
-| `npm install`                     | Installs dependencies                            |
-| `npm run dev`                     | Starts local dev server at `localhost:4321`      |
-| `npm run build`                   | Build your production site to `./dist/`          |
-| `npm run preview`                 | Preview your build locally, before deploying     |
-| `npm run astro ...`               | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help`         | Get help using the Astro CLI                     |
-| `npm run build && npm run deploy` | Deploy your production site to Cloudflare        |
-| `npm wrangler tail`               | View real-time logs for all Workers              |
+## 📋 Deployment
 
-## MVP setup (auth, posts, media, chat)
+**Important**: Before deploying, follow the comprehensive [Deployment Checklist](./docs/DEPLOYMENT_CHECKLIST.md).
 
-1. Install dependencies and wrangler globally:
+### Quick Deployment Steps
 
-   npm install
-   npm i -g wrangler
+1. **Create Cloudflare Resources**
+   ```bash
+   # Create D1 database
+   wrangler d1 create family_blog_db
+   
+   # Create R2 bucket (via dashboard or CLI)
+   # Update wrangler.json with correct database_id
+   ```
 
-2. Create Cloudflare resources:
-   - D1 database (family_blog_db)
-   - R2 bucket (family-blog-media)
-   - Durable Object class (GlobalChat) will be created/bound via wrangler
+2. **Set Environment Variables** (in Cloudflare Dashboard)
+   - `JWT_SECRET` - Generate with: `openssl rand -base64 32`
+   - `ADMIN_API_KEY` - Generate with: `openssl rand -base64 32`
 
-3. Add environment secrets in Cloudflare Pages/Workers settings:
-   - JWT_SECRET (strong random value)
+3. **Run Migrations**
+   ```bash
+   wrangler d1 execute family_blog_db --remote --file=./migrations/001_init.sql
+   ```
 
-4. Run migrations: copy `migrations/001_init.sql` to D1 or run via wrangler d1 CLI
+4. **Create Admin User** (via API after deployment)
+   ```bash
+   curl -X POST https://your-site.pages.dev/api/admin/users \
+     -H "Content-Type: application/json" \
+     -H "x-admin-key: YOUR_ADMIN_API_KEY" \
+     -d '{"email": "admin@example.com", "password": "secure-password", "name": "Admin"}'
+   ```
 
-5. Seed an admin user locally using `node scripts/seed_admin.js you@example.com yourpassword` for local testing.
+5. **Deploy**
+   ```bash
+   npm run deploy
+   ```
 
-6. Deploy: `wrangler deploy` (ensure bindings in wrangler.json are correct and secrets are set in Cloudflare environment).
+For detailed instructions, see [docs/DEPLOYMENT_CHECKLIST.md](./docs/DEPLOYMENT_CHECKLIST.md).
 
-Notes:
-- The MVP is barebones and uses HTTP headers `X-User-Id` for some local flows. Replace with full JWT verification before production.
-- Do not commit secrets to the repo.
+## 📖 API Endpoints
 
-## 👀 Want to learn more?
+### Authentication
+- `POST /api/auth/login` - User login (returns JWT + refresh cookie)
+- `POST /api/auth/refresh` - Refresh access token
+- `POST /api/auth/logout` - Logout and revoke refresh token
 
-Check out [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+### Admin
+- `POST /api/admin/users` - Create user (requires `x-admin-key` header)
+
+### Posts
+- `GET /api/posts` - List posts
+- `POST /api/posts` - Create post (requires Bearer token)
+
+### Feed
+- `GET /api/feed?limit=50&cursor=0` - Get paginated feed
+
+### Media
+- `POST /api/media/upload` - Upload media to R2 (requires Bearer token)
+
+### Chat
+- `GET /api/chat/connect` - WebSocket connection for chat (upgrades to WS)
+
+## 🧪 Testing
+
+Run the comprehensive test suite:
+
+```bash
+# Run all tests
+npm test
+
+# Run tests in watch mode (for development)
+npm run test:watch
+
+# Run tests with coverage
+npm run test:coverage
+```
+
+See [tests/README.md](./tests/README.md) for detailed testing documentation.
+
+## 📁 Project Structure
+
+```
+family-blog/
+├── src/                 # Astro source files
+├── functions/           # Cloudflare Pages Functions (API)
+├── workers/             # Cloudflare Workers (Durable Objects)
+├── migrations/          # D1 database migrations
+├── tests/               # Test suite
+├── docs/                # Documentation
+└── public/              # Static assets
+```
+
+## 📚 Documentation
+
+- [Project Plan](./docs/plan.md) - Original project specifications
+- [Code Review](./docs/REVIEW.md) - Issues found and fixed
+- [Deployment Checklist](./docs/DEPLOYMENT_CHECKLIST.md) - Step-by-step guide
+- [Testing Guide](./tests/README.md) - How to run tests
+- [Project Summary](./docs/SUMMARY.md) - Complete overview
+
+## 🔒 Security
+
+- Passwords hashed with bcrypt (cost 10)
+- Refresh tokens hashed with SHA-256
+- JWT tokens with 15-minute expiration
+- Refresh tokens with 30-day expiration and rotation
+- Secure, HttpOnly, SameSite cookies
+- Admin-only user creation
+
+## 🛠 Tech Stack
+
+- **Framework**: Astro 5.x
+- **Runtime**: Cloudflare Workers
+- **Database**: Cloudflare D1 (SQLite)
+- **Storage**: Cloudflare R2
+- **Real-time**: Cloudflare Durable Objects
+- **Testing**: Vitest
+
+## 🆘 Troubleshooting
+
+See [docs/DEPLOYMENT_CHECKLIST.md](./docs/DEPLOYMENT_CHECKLIST.md) for common issues and solutions.
 
 ## Credit
 

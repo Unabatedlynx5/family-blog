@@ -1,0 +1,19 @@
+---
+// Auth middleware for protecting pages
+const token = Astro.cookies.get('accessToken')?.value;
+const isAuthenticated = !!token;
+
+// Define public routes that don't require authentication
+const publicRoutes = ['/', '/login'];
+const currentPath = new URL(Astro.request.url).pathname;
+
+// If not authenticated and trying to access protected route, redirect to login
+if (!isAuthenticated && !publicRoutes.includes(currentPath)) {
+  return Astro.redirect('/login');
+}
+
+// If authenticated and on login page, redirect to feed
+if (isAuthenticated && currentPath === '/login') {
+  return Astro.redirect('/feed');
+}
+---

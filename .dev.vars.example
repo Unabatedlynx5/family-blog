@@ -1,0 +1,9 @@
+# Local development environment variables
+# Copy this file to .dev.vars and fill in your actual values
+# .dev.vars is gitignored and will not be committed
+
+# JWT secret for signing tokens (generate with: openssl rand -base64 32)
+JWT_SECRET=your-jwt-secret-here
+
+# Admin API key for creating users (generate with: openssl rand -base64 24)
+ADMIN_API_KEY=your-admin-api-key-here

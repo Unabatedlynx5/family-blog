@@ -18,19 +18,27 @@
     "@astrojs/rss": "4.0.11",
     "@astrojs/sitemap": "3.4.1",
     "astro": "^5.16.6",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
     "typescript": "5.8.3"
   },
   "devDependencies": {
+    "better-sqlite3": "^11.0.0",
+    "vitest": "^2.0.0",
     "wrangler": "4.21.x"
   },
   "scripts": {
     "astro": "astro",
     "build": "astro build",
+    "postbuild": "node scripts/append_do_export.js",
     "cf-typegen": "wrangler types",
     "check": "astro build && tsc && wrangler deploy --dry-run",
     "deploy": "wrangler deploy",
     "dev": "astro dev",
-    "preview": "astro build && wrangler dev"
+    "preview": "astro build && wrangler dev",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "type": "module"
 }
