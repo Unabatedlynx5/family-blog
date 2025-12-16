@@ -112,123 +112,85 @@ if (!token) {
     <Footer />
 
     <script type="module">
-      const messagesContainer = document.getElementById('messages');
-      const statusDiv = document.getElementById('status');
-      const msgInput = document.getElementById('msg');
-      const sendBtn = document.getElementById('send');
-      let currentUserId = null;
-
-      // Load messages
-      async function loadMessages() {
+      // Connect to WebSocket
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = window.location.host;
+      const wsUrl = `${protocol}//${host}/api/chat/connect`;
+      
+      let ws;
+      const messagesContainer = document.querySelector('.chat-messages');
+      const statusDiv = document.querySelector('.chat-status');
+      const input = document.querySelector('textarea');
+      const sendBtn = document.querySelector('button');
+      
+      // Get user info from somewhere (e.g. session storage or a meta tag)
+      // For now, we'll just use a random ID if not found, but ideally we decode the token
+      const token = sessionStorage.getItem('accessToken');
+      let userId = 'anon';
+      if (token) {
         try {
-          const res = await fetch('/api/chat/messages');
-          const data = await res.json();
-          
-          if (!res.ok) {
-            statusDiv.textContent = 'Failed to load messages';
-            return;
-          }
-
-          messagesContainer.innerHTML = '';
-          const messages = data.messages || [];
-          
-          messages.forEach(msg => {
-            appendMessage(msg);
-          });
-          
-          statusDiv.textContent = `${messages.length} messages loaded`;
-          setTimeout(() => statusDiv.style.display = 'none', 2000);
-          scrollToBottom();
-        } catch (err) {
-          statusDiv.textContent = 'Error loading messages';
-          console.error(err);
-        }
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          userId = payload.sub;
+        } catch (e) {}
       }
 
+      function connect() {
+        statusDiv.textContent = 'Connecting...';
+        ws = new WebSocket(wsUrl);
+        
+        ws.onopen = () => {
+          statusDiv.textContent = 'Connected';
+          statusDiv.style.color = 'green';
+          // Send auth message if needed, or just rely on cookie if the connect endpoint handles it
+          // The current GlobalChat implementation expects a message with user_id
+          ws.send(JSON.stringify({ type: 'auth', token }));
+        };
+        
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'message') {
+              appendMessage(data.message);
+            }
+          } catch (e) {}
+        };
+        
+        ws.onclose = () => {
+          statusDiv.textContent = 'Disconnected. Reconnecting...';
+          statusDiv.style.color = 'red';
+          setTimeout(connect, 3000);
+        };
+      }
+      
       function appendMessage(msg) {
         const div = document.createElement('div');
-        div.className = 'message';
-        if (msg.user_email === currentUserEmail) {
-          div.classList.add('own');
-        }
-        
-        const time = new Date(msg.created_at * 1000).toLocaleTimeString([], { 
-          hour: '2-digit', 
-          minute: '2-digit' 
-        });
-        
+        const isOwn = msg.user_id === userId;
+        div.className = `message ${isOwn ? 'own' : ''}`;
         div.innerHTML = `
-          <div class="message-author">${msg.user_name || msg.user_email}</div>
-          <div class="message-text">${escapeHtml(msg.message)}</div>
-          <div class="message-time">${time}</div>
+          <div class="message-author">${msg.user_id.slice(0,8)}</div>
+          <div class="message-text">${msg.text}</div>
+          <div class="message-time">${new Date(msg.created_at).toLocaleTimeString()}</div>
         `;
-        
         messagesContainer.appendChild(div);
-      }
-
-      function scrollToBottom() {
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
       }
-
-      function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-      }
-
-      // Send message
-      async function sendMessage() {
-        const text = msgInput.value.trim();
-        if (!text) return;
-
-        sendBtn.disabled = true;
-        sendBtn.textContent = 'Sending...';
-
-        try {
-          const res = await fetch('/api/chat/messages', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: text })
-          });
-
-          const data = await res.json();
-          
-          if (!res.ok) {
-            alert(data.error || 'Failed to send message');
-            return;
-          }
-
-          msgInput.value = '';
-          appendMessage(data.message);
-          scrollToBottom();
-        } catch (err) {
-          alert('Error sending message');
-          console.error(err);
-        } finally {
-          sendBtn.disabled = false;
-          sendBtn.textContent = 'Send';
+      
+      sendBtn.addEventListener('click', () => {
+        const text = input.value.trim();
+        if (text && ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ text, user_id: userId }));
+          input.value = '';
         }
-      }
-
-      sendBtn.addEventListener('click', sendMessage);
-      msgInput.addEventListener('keypress', (e) => {
+      });
+      
+      input.addEventListener('keypress', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
           e.preventDefault();
-          sendMessage();
+          sendBtn.click();
         }
       });
-
-      // Get current user email from a cookie or session
-      const cookies = document.cookie.split(';');
-      let currentUserEmail = null;
       
-      // Poll for new messages every 3 seconds
-      loadMessages();
-      setInterval(loadMessages, 3000);
-        if(!text) return;
-        ws.send(JSON.stringify({ user_id: 'LOCAL-ADMIN', text }));
-        document.getElementById('msg').value = '';
-      });
+      connect();
     </script>
   </body>
 </html>

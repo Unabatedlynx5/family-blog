@@ -1,0 +1,83 @@
+import type { APIRoute } from 'astro';
+// @ts-ignore
+import { rotateRefreshToken, createAccessToken } from '../../../../workers/utils/auth.js';
+
+export const prerender = false;
+
+export const POST: APIRoute = async ({ cookies, locals }) => {
+  const env = locals.runtime.env as any;
+  
+  const refreshToken = cookies.get('refresh')?.value;
+
+  if (!refreshToken) {
+    return new Response(JSON.stringify({ error: 'No refresh token' }), { 
+      status: 401,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+
+  try {
+    // Rotate refresh token
+    const result = await rotateRefreshToken(env.DB, refreshToken);
+    
+    if (!result) {
+      // Invalid or revoked token
+      cookies.delete('refresh', { path: '/' });
+      cookies.delete('accessToken', { path: '/' });
+      
+      return new Response(JSON.stringify({ error: 'Invalid refresh token' }), { 
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const { user_id, newToken } = result;
+
+    // Get user email for access token
+    const user = await env.DB.prepare('SELECT email FROM users WHERE id = ?').bind(user_id).first();
+    
+    if (!user) {
+      return new Response(JSON.stringify({ error: 'User not found' }), { 
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const jwtSecret = await env.JWT_SECRET;
+    const newAccessToken = createAccessToken({ sub: user_id, email: user.email }, { JWT_SECRET: jwtSecret });
+
+    // Set new refresh token cookie
+    cookies.set('refresh', newToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+      path: '/',
+      maxAge: 30 * 24 * 60 * 60 // 30 days
+    });
+
+    // Set new access token cookie
+    cookies.set('accessToken', newAccessToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+      path: '/',
+      maxAge: 60 * 15 // 15 minutes
+    });
+
+    return new Response(
+      JSON.stringify({ 
+        accessToken: newAccessToken
+      }), 
+      { 
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
+  } catch (err) {
+    console.error('Refresh error:', err);
+    return new Response(JSON.stringify({ error: 'Server error' }), { 
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+};

@@ -8,7 +8,16 @@ export const POST: APIRoute = async ({ request, locals, cookies }) => {
   const env = locals.runtime.env as any;
   
   // Verify authentication
-  const token = cookies.get('accessToken')?.value;
+  let token = cookies.get('accessToken')?.value;
+  
+  // Also check Authorization header for flexibility (e.g. from client-side fetch where cookie might not be sent if cross-origin or specific fetch mode)
+  if (!token) {
+    const authHeader = request.headers.get('Authorization');
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
+    }
+  }
+
   if (!token) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
       status: 401,

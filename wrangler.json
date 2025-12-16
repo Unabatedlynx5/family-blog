@@ -25,5 +25,21 @@
 			"binding": "MEDIA",
 			"bucket_name": "family-blog-media"
 		}
+	],
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "GLOBAL_CHAT",
+				"class_name": "GlobalChat"
+			}
+		]
+	},
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_classes": [
+				"GlobalChat"
+			]
+		}
 	]
 }

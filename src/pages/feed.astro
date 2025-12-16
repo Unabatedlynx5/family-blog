@@ -57,11 +57,71 @@ if (!token) {
       }
       document.getElementById('post').addEventListener('click', async ()=>{
         const content = document.getElementById('content').value;
+        const fileInput = document.getElementById('file');
+        const file = fileInput.files[0];
+        
+        // Get token from cookie (browser handles it automatically for same-origin)
+        // But for API calls we might need to ensure we are authenticated.
+        // The API expects Bearer token in Authorization header for some endpoints,
+        // but our login sets an HttpOnly cookie.
+        // Let's check if we need to manually send the token.
+        // The current implementation of /api/posts checks `cookies.get('accessToken')`.
+        // So we don't strictly need the Authorization header if the API reads cookies.
+        // However, /api/media/upload currently checks Authorization header.
+        // We should unify this. For now, let's try to use the cookie if possible, 
+        // or we need to expose the token to the client.
+        // The login page sets sessionStorage 'accessToken' as well.
         const token = sessionStorage.getItem('accessToken');
-        const res = await fetch('/api/posts', { method:'POST', headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${token}`, 'x-user-id': 'LOCAL-ADMIN' }, body: JSON.stringify({ content }) });
+        
+        let mediaId = null;
+        
+        if (file) {
+          const formData = new FormData();
+          formData.append('file', file);
+          
+          try {
+            const uploadRes = await fetch('/api/media/upload', {
+              method: 'POST',
+              headers: {
+                // 'Content-Type': 'multipart/form-data'; // Let browser set boundary
+                // We need to send the token if the API requires it in header
+                // The upload endpoint currently checks Authorization header.
+                // If we want to rely on cookies, we need to update the upload endpoint.
+                // For now, let's send the header if we have the token.
+                'Authorization': `Bearer ${token}`
+              },
+              body: formData
+            });
+            
+            if (!uploadRes.ok) {
+              alert('Upload failed');
+              return;
+            }
+            
+            const uploadJson = await uploadRes.json();
+            mediaId = uploadJson.media.id;
+          } catch (e) {
+            console.error(e);
+            alert('Upload error');
+            return;
+          }
+        }
+
+        const res = await fetch('/api/posts', { 
+          method:'POST', 
+          headers: { 
+            'Content-Type':'application/json', 
+            // 'Authorization': `Bearer ${token}` // Cookie should handle this for posts endpoint
+          }, 
+          body: JSON.stringify({ content, media_id: mediaId }) 
+        });
+        
         if(res.ok){
           document.getElementById('content').value='';
+          fileInput.value = '';
           loadFeed();
+        } else {
+          alert('Failed to post');
         }
       });
       document.getElementById('clear').addEventListener('click', ()=>{ document.getElementById('content').value=''; });
