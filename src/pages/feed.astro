@@ -1,7 +1,5 @@
 ---
-import BaseHead from '../components/BaseHead.astro';
-import Header from '../components/Header.astro';
-import Footer from '../components/Footer.astro';
+import SocialLayout from '../layouts/SocialLayout.astro';
 
 export const prerender = false;
 
@@ -11,121 +9,309 @@ if (!token) {
   return Astro.redirect('/login');
 }
 ---
-<html>
-  <head>
-    <BaseHead title="Feed" />
-  </head>
-  <body>
-    <Header />
-    <main class="container">
-      <section id="composer" class="composer">
-        <textarea id="content" placeholder="Share an update with family..."></textarea>
-        <div class="controls">
-          <div>
-            <input id="file" type="file" />
-          </div>
-          <div>
-            <button id="post" class="button">Post</button>
-            <button id="clear" class="button secondary">Clear</button>
-          </div>
+<SocialLayout title="Feed">
+  <style is:global>
+    .composer {
+        background: var(--white);
+        padding: 1rem;
+        border-radius: 0.5rem;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        margin-bottom: 1rem;
+    }
+    .composer textarea {
+        width: 100%;
+        border: none;
+        background: #f0f2f5;
+        padding: 1rem;
+        border-radius: 1.5rem;
+        resize: none;
+        font-family: inherit;
+        box-sizing: border-box;
+        margin-bottom: 1rem;
+    }
+    .composer-controls {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-top: 1px solid var(--border);
+        padding-top: 1rem;
+    }
+    .file-input-wrapper {
+        position: relative;
+        overflow: hidden;
+        display: inline-block;
+    }
+    .file-input-wrapper input[type=file] {
+        font-size: 100px;
+        position: absolute;
+        left: 0;
+        top: 0;
+        opacity: 0;
+    }
+    .btn-upload {
+        background: #e7f3ff;
+        color: var(--primary);
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .btn-post {
+        background: var(--primary);
+        color: white;
+        border: none;
+        padding: 0.5rem 2rem;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        font-weight: 600;
+    }
+    
+    .card {
+        background: var(--white);
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        padding: 1.25rem;
+        margin-bottom: 1.5rem;
+        transition: box-shadow 0.2s ease;
+    }
+    .card:hover {
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    .card-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid #f0f2f5;
+    }
+    .avatar {
+        width: 40px;
+        height: 40px;
+        background: #ddd;
+        border-radius: 50%;
+        margin-right: 0.75rem;
+    }
+    .user-name { font-weight: 600; }
+    .time { font-size: 0.8rem; color: var(--text-secondary); }
+    .card-content {
+        margin-bottom: 1rem;
+        line-height: 1.5;
+    }
+    .card-image {
+        width: calc(100% + 2rem);
+        margin: 0.5rem -1rem;
+        max-height: 500px;
+        object-fit: cover;
+        background: #eee;
+        display: block;
+    }
+    .actions {
+        border-top: 1px solid var(--border);
+        margin-top: 1rem;
+        padding-top: 0.5rem;
+        display: flex;
+        justify-content: space-around;
+    }
+    .action-btn {
+        padding: 0.5rem 1rem;
+        border-radius: 0.25rem;
+        cursor: pointer;
+        color: var(--text-secondary);
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: background 0.2s;
+    }
+    .action-btn:hover { background: #f0f2f5; }
+    
+    /* Markdown Styles within Card */
+    .card-content.markdown-body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+        line-height: 1.6;
+        color: #1c1e21;
+    }
+    .card-content.markdown-body p {
+        margin-bottom: 0.5rem;
+    }
+    .card-content.markdown-body h1, 
+    .card-content.markdown-body h2, 
+    .card-content.markdown-body h3 {
+        margin-top: 1rem;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+    }
+    .card-content.markdown-body a {
+        color: var(--primary);
+        text-decoration: none;
+    }
+    .card-content.markdown-body a:hover {
+        text-decoration: underline;
+    }
+    .card-content.markdown-body blockquote {
+        border-left: 4px solid #ddd;
+        padding-left: 1rem;
+        color: #666;
+        margin: 0.5rem 0;
+    }
+    .card-content.markdown-body code {
+        background: #f0f2f5;
+        padding: 0.2rem 0.4rem;
+        border-radius: 4px;
+        font-family: monospace;
+        font-size: 0.9em;
+    }
+    .card-content.markdown-body pre {
+        background: #f0f2f5;
+        padding: 1rem;
+        border-radius: 8px;
+        overflow-x: auto;
+    }
+  </style>
+
+  <div id="composer" class="composer">
+    <textarea id="content" rows="3" placeholder="What's on your mind?"></textarea>
+    <div class="composer-controls">
+      <div class="file-input-wrapper">
+        <div class="btn-upload">
+            <span>🖼️</span> Photo
         </div>
-      </section>
+        <input id="file" type="file" accept="image/*" />
+      </div>
+      <button id="post" class="btn-post">Post</button>
+    </div>
+  </div>
 
-      <section id="posts" style="margin-top:1rem;"></section>
-    </main>
-    <Footer />
+  <div id="posts"></div>
 
-    <script type="module">
-      async function loadFeed(){
-        const res = await fetch('/api/feed');
-        const json = await res.json();
-        const posts = json.posts || [];
-        const container = document.getElementById('posts');
-        container.innerHTML = '';
-        for(const p of posts){
-          const el = document.createElement('div');
-          el.className = 'post-card';
-          el.innerHTML = `
-            <div class="avatar"></div>
-            <div class="body">
-              <div class="meta">${p.name || p.user_id || (p.source==='markdown'? 'Markdown' : 'Anonymous')} • ${p.created_at ? new Date(p.created_at*1000).toLocaleString() : ''}</div>
-              <div class="content">${p.source==='markdown' ? `<strong>${p.filename}</strong><div><pre style="white-space:pre-wrap;margin:0">${p.content.slice(0,400)}</pre></div>` : p.content}</div>
-            </div>
-          `;
-          container.appendChild(el);
+  <script type="module">
+    import { marked } from "https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js";
+
+    async function loadFeed(){
+      const res = await fetch('/api/feed');
+      const json = await res.json();
+      const posts = json.posts || [];
+      const container = document.getElementById('posts');
+      container.innerHTML = '';
+      for(const p of posts){
+        const el = document.createElement('div');
+        el.className = 'card';
+        
+        let contentHtml = p.content;
+        // Always treat content as markdown
+        try {
+            contentHtml = marked.parse(p.content);
+        } catch (e) {
+            console.error('Markdown parse error', e);
         }
+
+        let mediaHtml = '';
+        if (p.media_url) {
+            mediaHtml = `<img src="${p.media_url}" class="card-image" alt="Post image" loading="lazy" />`;
+        }
+        
+        const dateStr = p.created_at ? new Date(p.created_at*1000).toLocaleString(undefined, {
+            year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+        }) : '';
+
+        el.innerHTML = `
+          <div class="card-header">
+            <div class="avatar"></div>
+            <div>
+              <div class="user-name">${p.name || p.user_id || (p.source==='markdown'? 'System' : 'Anonymous')}</div>
+              <div class="time">${dateStr}</div>
+            </div>
+          </div>
+          <div class="card-content markdown-body">${contentHtml}</div>
+          ${mediaHtml}
+          <div class="actions">
+            <div class="action-btn">
+                <span>👍</span> Like
+            </div>
+            <div class="action-btn">
+                <span>💬</span> Comment
+            </div>
+          </div>
+        `;
+        container.appendChild(el);
       }
-      document.getElementById('post').addEventListener('click', async ()=>{
-        const content = document.getElementById('content').value;
-        const fileInput = document.getElementById('file');
-        const file = fileInput.files[0];
+    }
+
+    document.getElementById('post').addEventListener('click', async ()=>{
+      const content = document.getElementById('content').value;
+      const fileInput = document.getElementById('file');
+      const file = fileInput.files[0];
+      
+      const token = sessionStorage.getItem('accessToken');
+      
+      let mediaId = null;
+      
+      if (file) {
+        const formData = new FormData();
+        formData.append('file', file);
         
-        // Get token from cookie (browser handles it automatically for same-origin)
-        // But for API calls we might need to ensure we are authenticated.
-        // The API expects Bearer token in Authorization header for some endpoints,
-        // but our login sets an HttpOnly cookie.
-        // Let's check if we need to manually send the token.
-        // The current implementation of /api/posts checks `cookies.get('accessToken')`.
-        // So we don't strictly need the Authorization header if the API reads cookies.
-        // However, /api/media/upload currently checks Authorization header.
-        // We should unify this. For now, let's try to use the cookie if possible, 
-        // or we need to expose the token to the client.
-        // The login page sets sessionStorage 'accessToken' as well.
-        const token = sessionStorage.getItem('accessToken');
-        
-        let mediaId = null;
-        
-        if (file) {
-          const formData = new FormData();
-          formData.append('file', file);
+        try {
+          const uploadRes = await fetch('/api/media/upload', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            },
+            body: formData
+          });
           
-          try {
-            const uploadRes = await fetch('/api/media/upload', {
-              method: 'POST',
-              headers: {
-                // 'Content-Type': 'multipart/form-data'; // Let browser set boundary
-                // We need to send the token if the API requires it in header
-                // The upload endpoint currently checks Authorization header.
-                // If we want to rely on cookies, we need to update the upload endpoint.
-                // For now, let's send the header if we have the token.
-                'Authorization': `Bearer ${token}`
-              },
-              body: formData
-            });
-            
-            if (!uploadRes.ok) {
-              alert('Upload failed');
-              return;
-            }
-            
-            const uploadJson = await uploadRes.json();
-            mediaId = uploadJson.media.id;
-          } catch (e) {
-            console.error(e);
-            alert('Upload error');
+          if (!uploadRes.ok) {
+            alert('Upload failed');
             return;
           }
+          
+          const uploadJson = await uploadRes.json();
+          mediaId = uploadJson.media.id;
+          
+          // If we just uploaded an image, let's append it to the content for now as a markdown image
+          // or just rely on the backend to link it.
+          // The current backend for posts doesn't explicitly link media yet in the POST /api/feed endpoint 
+          // (it just takes content).
+          // Let's append the image markdown to the content.
+          // content += `\n\n![Image](/api/media/${mediaId})`; 
+          // Actually, let's just post the text for now, and maybe we need to update the feed API to handle media_id.
+        } catch (e) {
+          console.error(e);
+          alert('Error uploading file');
+          return;
         }
+      }
 
-        const res = await fetch('/api/posts', { 
-          method:'POST', 
-          headers: { 
-            'Content-Type':'application/json', 
-            // 'Authorization': `Bearer ${token}` // Cookie should handle this for posts endpoint
-          }, 
-          body: JSON.stringify({ content, media_id: mediaId }) 
-        });
-        
-        if(res.ok){
-          document.getElementById('content').value='';
-          fileInput.value = '';
-          loadFeed();
-        } else {
-          alert('Failed to post');
-        }
+      if(!content && !mediaId) return;
+
+      const payload = { content };
+      if (mediaId) {
+          payload.media_id = mediaId;
+      }
+
+      const res = await fetch('/api/feed', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
       });
-      document.getElementById('clear').addEventListener('click', ()=>{ document.getElementById('content').value=''; });
-      loadFeed();
-    </script>
-  </body>
-</html>
+
+      if(res.ok){
+        document.getElementById('content').value = '';
+        document.getElementById('file').value = '';
+        loadFeed();
+      } else {
+        const errText = await res.text();
+        console.error('Post failed:', res.status, errText);
+        alert(`Failed to post: ${res.status} ${errText}`);
+      }
+    });
+
+    loadFeed();
+  </script>
+</SocialLayout>

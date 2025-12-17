@@ -53,6 +53,10 @@ if (token) {
           }
           // store access token in memory (simple) and redirect to feed
           sessionStorage.setItem('accessToken', json.accessToken);
+          if (json.user) {
+            if (json.user.id) sessionStorage.setItem('userId', json.user.id);
+            if (json.user.name) sessionStorage.setItem('userName', json.user.name);
+          }
           window.location.href = '/feed';
         } catch (err) {
           status.textContent = 'Network error';

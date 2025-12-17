@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classic Blog Layout</title>
+    <style>
+        :root {
+            --primary: #667eea;
+            --text: #333;
+            --bg: #f4f4f9;
+            --white: #ffffff;
+        }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: var(--white);
+            padding: 2rem;
+            border-right: 1px solid #eee;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+        }
+        .profile {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .avatar {
+            width: 100px;
+            height: 100px;
+            background: #ddd;
+            border-radius: 50%;
+            margin: 0 auto 1rem;
+        }
+        .nav-links {
+            list-style: none;
+            padding: 0;
+        }
+        .nav-links li {
+            margin-bottom: 1rem;
+        }
+        .nav-links a {
+            text-decoration: none;
+            color: var(--text);
+            font-weight: 500;
+            display: block;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            transition: background 0.2s;
+        }
+        .nav-links a:hover {
+            background: #f0f0f0;
+            color: var(--primary);
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: 280px;
+            flex: 1;
+            padding: 2rem;
+            max-width: 800px;
+        }
+        
+        .post {
+            background: var(--white);
+            border-radius: 1rem;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .post-header {
+            margin-bottom: 1rem;
+        }
+        .post-meta {
+            color: #888;
+            font-size: 0.9rem;
+        }
+        .post-image {
+            width: 100%;
+            height: 300px;
+            background: #eee;
+            border-radius: 0.5rem;
+            margin: 1rem 0;
+            object-fit: cover;
+        }
+
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            .sidebar { 
+                width: 100%; 
+                height: auto; 
+                position: relative; 
+                border-right: none;
+                border-bottom: 1px solid #eee;
+            }
+            .main-content { margin-left: 0; }
+        }
+    </style>
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="profile">
+            <div class="avatar"></div>
+            <h3>The Denton Family</h3>
+            <p>Sharing our adventures</p>
+        </div>
+        <ul class="nav-links">
+            <li><a href="#">🏠 Home Feed</a></li>
+            <li><a href="#">💬 Family Chat</a></li>
+            <li><a href="#">📸 Photo Gallery</a></li>
+            <li><a href="#">📅 Events</a></li>
+            <li><a href="#">👤 My Profile</a></li>
+        </ul>
+    </aside>
+    <main class="main-content">
+        <h1>Latest Updates</h1>
+        
+        <article class="post">
+            <div class="post-header">
+                <h2>Summer Vacation at the Lake</h2>
+                <div class="post-meta">Posted by Frank • 2 hours ago</div>
+            </div>
+            <p>We had such a wonderful time this weekend! The weather was perfect and the kids loved swimming.</p>
+            <div class="post-image"></div>
+            <p>Can't wait to go back next year.</p>
+        </article>
+
+        <article class="post">
+            <div class="post-header">
+                <h2>Grandma's Birthday Dinner</h2>
+                <div class="post-meta">Posted by Sarah • Yesterday</div>
+            </div>
+            <p>Thanks everyone for coming out to celebrate! Here are some photos from the night.</p>
+        </article>
+    </main>
+</body>
+</html>

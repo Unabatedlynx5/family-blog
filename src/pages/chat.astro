@@ -1,7 +1,5 @@
 ---
-import BaseHead from '../components/BaseHead.astro';
-import Header from '../components/Header.astro';
-import Footer from '../components/Footer.astro';
+import SocialLayout from '../layouts/SocialLayout.astro';
 
 export const prerender = false;
 
@@ -11,107 +9,211 @@ if (!token) {
   return Astro.redirect('/login');
 }
 ---
-<html>
-  <head>
-    <BaseHead title="Family Chat" />
-    <style>
+<SocialLayout title="Family Chat">
+    <style is:global>
       .chat-container {
-        max-width: 900px;
-        margin: 2rem auto;
         display: flex;
         flex-direction: column;
-        height: calc(100vh - 200px);
-        background: white;
+        height: calc(100vh - 140px); /* Adjust based on header/padding */
+        background: #ffffff;
         border-radius: 1rem;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         overflow: hidden;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       }
       .chat-header {
-        padding: 1.5rem;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        font-weight: 700;
-        font-size: 1.25rem;
+        padding: 1rem 1.5rem;
+        background: rgba(245, 245, 247, 0.8);
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid rgba(0,0,0,0.1);
+        font-weight: 600;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        position: relative;
+        color: #000;
+      }
+      .chat-header span:first-child {
+          font-size: 1.1rem;
+      }
+      .chat-status {
+        font-size: 0.75rem;
+        color: #8e8e93;
+        position: absolute;
+        right: 1.5rem;
       }
       .chat-messages {
         flex: 1;
         overflow-y: auto;
-        padding: 1.5rem;
+        padding: 1rem 1.5rem;
         display: flex;
         flex-direction: column;
-        gap: 1rem;
+        gap: 0.25rem;
+        background: #ffffff;
       }
       .message {
         display: flex;
         flex-direction: column;
-        max-width: 70%;
-        padding: 0.75rem 1rem;
-        border-radius: 1rem;
-        background: #f0f0f0;
+        max-width: 75%;
+        padding: 0.6rem 1rem;
+        border-radius: 1.25rem;
+        position: relative;
+        font-size: 1rem;
+        line-height: 1.4;
+        margin-bottom: 0.25rem;
+        word-wrap: break-word;
+      }
+      .message.others {
+        align-self: flex-start;
+        background: #e9e9eb;
+        color: #000;
+        border-bottom-left-radius: 0.25rem;
+        margin-left: 0.5rem;
       }
       .message.own {
         align-self: flex-end;
-        background: #667eea;
+        background: #007aff;
         color: white;
+        border-bottom-right-radius: 0.25rem;
+        margin-right: 0.5rem;
       }
+      /* Tail effect for messages */
+      .message.others::before {
+          content: "";
+          position: absolute;
+          bottom: 0;
+          left: -6px;
+          width: 10px;
+          height: 10px;
+          background: #e9e9eb;
+          border-bottom-right-radius: 10px;
+          z-index: 0;
+      }
+      .message.others::after {
+          content: "";
+          position: absolute;
+          bottom: 0;
+          left: -10px;
+          width: 10px;
+          height: 10px;
+          background: #ffffff; /* Match container background */
+          border-bottom-right-radius: 10px;
+          z-index: 1; /* Ensure it covers the tail */
+      }
+      .message.own::before {
+          content: "";
+          position: absolute;
+          bottom: 0;
+          right: -6px;
+          width: 10px;
+          height: 10px;
+          background: #007aff;
+          border-bottom-left-radius: 10px;
+          z-index: 0;
+      }
+      .message.own::after {
+          content: "";
+          position: absolute;
+          bottom: 0;
+          right: -10px;
+          width: 10px;
+          height: 10px;
+          background: #ffffff; /* Match container background */
+          border-bottom-left-radius: 10px;
+          z-index: 1; /* Ensure it covers the tail */
+      }
+
       .message-author {
-        font-size: 0.75rem;
-        font-weight: 600;
-        margin-bottom: 0.25rem;
-        opacity: 0.8;
+        font-size: 0.7rem;
+        margin-bottom: 0.1rem;
+        color: #8e8e93;
+        margin-left: 0.5rem;
+        margin-top: -0.25rem;
       }
-      .message-text {
-        word-wrap: break-word;
+      .message.own .message-author {
+        display: none; 
       }
       .message-time {
-        font-size: 0.7rem;
-        opacity: 0.6;
-        margin-top: 0.25rem;
-        text-align: right;
+          display: none; /* Hide time by default, maybe show on hover or tap? */
       }
+      
       .chat-input-area {
-        padding: 1rem;
-        border-top: 1px solid #e0e0e0;
+        padding: 0.75rem 1rem;
+        background: #f5f5f7;
+        border-top: 1px solid rgba(0,0,0,0.1);
         display: flex;
-        gap: 0.5rem;
+        gap: 0.75rem;
+        align-items: flex-end;
       }
       .chat-input-area textarea {
         flex: 1;
-        padding: 0.75rem;
-        border: 1px solid #ddd;
-        border-radius: 0.5rem;
+        padding: 0.5rem 1rem;
+        border: 1px solid #d1d1d6;
+        background: #ffffff;
+        border-radius: 1.25rem;
         resize: none;
         font-family: inherit;
+        max-height: 100px;
+        outline: none;
+        font-size: 1rem;
+        line-height: 1.4;
+      }
+      .chat-input-area textarea:focus {
+          border-color: #007aff;
       }
       .chat-input-area button {
-        padding: 0.75rem 1.5rem;
-        white-space: nowrap;
+        background: #007aff;
+        border: none;
+        cursor: pointer;
+        color: white;
+        font-weight: 600;
+        padding: 0.5rem;
+        border-radius: 50%;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 2px;
+        transition: background 0.2s;
       }
-      .chat-status {
-        padding: 0.5rem 1rem;
-        background: #f0f0f0;
-        text-align: center;
-        font-size: 0.875rem;
-        color: #666;
+      .chat-input-area button:hover {
+          background: #0062cc;
+      }
+      .chat-input-area button:disabled {
+          background: #d1d1d6;
+          cursor: default;
+      }
+      /* Arrow icon for send button */
+      .send-icon {
+          width: 16px;
+          height: 16px;
+          fill: white;
+          transform: translateX(1px); /* Optical alignment */
       }
     </style>
-  </head>
-  <body>
-    <Header />
-    <main class="container">
-      <div class="chat-container">
-        <div class="chat-header">💬 Family Chat</div>
-        <div class="chat-status" id="status">Loading messages...</div>
-        <div class="chat-messages" id="messages"></div>
-        <div class="chat-input-area">
-          <textarea id="msg" rows="2" placeholder="Type your message..."></textarea>
-          <button id="send" class="button">Send</button>
-        </div>
-      </div>
-    </main>
-    <Footer />
 
-    <script type="module">
+    <div class="chat-container">
+      <div class="chat-header">
+        <span>Family</span>
+        <span id="connection-status" class="chat-status">Connecting...</span>
+      </div>
+      
+      <div id="messages" class="chat-messages">
+        <!-- Messages will appear here -->
+      </div>
+
+      <div class="chat-input-area">
+        <textarea id="message-input" rows="1" placeholder="iMessage"></textarea>
+        <button id="send-btn">
+            <svg class="send-icon" viewBox="0 0 24 24">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+            </svg>
+        </button>
+      </div>
+    </div>
+
+    <script>
       // Connect to WebSocket
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const host = window.location.host;
@@ -123,16 +225,17 @@ if (!token) {
       const input = document.querySelector('textarea');
       const sendBtn = document.querySelector('button');
       
-      // Get user info from somewhere (e.g. session storage or a meta tag)
-      // For now, we'll just use a random ID if not found, but ideally we decode the token
+      // Get user info from session storage or token
       const token = sessionStorage.getItem('accessToken');
-      let userId = 'anon';
-      if (token) {
+      let userId = sessionStorage.getItem('userId');
+      
+      if (!userId && token) {
         try {
           const payload = JSON.parse(atob(token.split('.')[1]));
           userId = payload.sub;
         } catch (e) {}
       }
+      userId = userId || 'anon';
 
       function connect() {
         statusDiv.textContent = 'Connecting...';
@@ -151,6 +254,13 @@ if (!token) {
             const data = JSON.parse(event.data);
             if (data.type === 'message') {
               appendMessage(data.message);
+            } else if (data.type === 'history') {
+                // Clear existing messages first if needed, or just append
+                // messagesContainer.innerHTML = ''; 
+                // Actually, let's just append them.
+                if (Array.isArray(data.messages)) {
+                    data.messages.forEach(appendMessage);
+                }
             }
           } catch (e) {}
         };
@@ -164,10 +274,15 @@ if (!token) {
       
       function appendMessage(msg) {
         const div = document.createElement('div');
+        // Check both user_id (from server) and userId (from session)
         const isOwn = msg.user_id === userId;
-        div.className = `message ${isOwn ? 'own' : ''}`;
+        div.className = `message ${isOwn ? 'own' : 'others'}`;
+        
+        // Use user name if available, else user_id
+        const displayName = msg.user || msg.user_id || 'Anon';
+        
         div.innerHTML = `
-          <div class="message-author">${msg.user_id.slice(0,8)}</div>
+          <div class="message-author">${displayName}</div>
           <div class="message-text">${msg.text}</div>
           <div class="message-time">${new Date(msg.created_at).toLocaleTimeString()}</div>
         `;
@@ -175,12 +290,34 @@ if (!token) {
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
       }
       
-      sendBtn.addEventListener('click', () => {
+      function sendMessage() {
         const text = input.value.trim();
         if (text && ws && ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ text, user_id: userId }));
+          // Get user info from session storage (set during login)
+          // If not set, we might need to fetch it or default to 'Anonymous'
+          // Ideally, the server should validate the user from the token, but for this simple chat
+          // we are passing it in the message for display.
+          // A more secure way: Authenticate the WebSocket connection with the token, 
+          // and let the server determine the user ID/Name.
+          // For now, let's send what we have.
+          const userId = sessionStorage.getItem('userId') || 'anon';
+          // We don't have the user's name stored in session storage yet, let's add it to login.astro or fetch it.
+          // For now, let's default to 'Me' or 'User'.
+          // Actually, let's update login.astro to store 'userName' as well.
+          const userName = sessionStorage.getItem('userName') || 'Family Member';
+
+          ws.send(JSON.stringify({ 
+              type: 'message', 
+              text,
+              userId,
+              user: userName
+          }));
           input.value = '';
         }
+      }
+      
+      sendBtn.addEventListener('click', () => {
+        sendMessage();
       });
       
       input.addEventListener('keypress', (e) => {
@@ -192,5 +329,4 @@ if (!token) {
       
       connect();
     </script>
-  </body>
-</html>
+</SocialLayout>

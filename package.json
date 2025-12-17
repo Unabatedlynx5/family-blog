@@ -20,12 +20,13 @@
     "astro": "^5.16.6",
     "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^9.0.2",
+    "marked": "^17.0.1",
     "typescript": "5.8.3"
   },
   "devDependencies": {
     "better-sqlite3": "^11.0.0",
     "vitest": "^2.0.0",
-    "wrangler": "4.21.x"
+    "wrangler": "^4.55.0"
   },
   "scripts": {
     "astro": "astro",

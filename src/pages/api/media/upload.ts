@@ -79,10 +79,12 @@ export const POST: APIRoute = async ({ request, locals, cookies }) => {
 
     // Save metadata to DB
     const now = Math.floor(Date.now() / 1000);
+    // Schema: id, uploader_id, r2_key, mime_type, size, created_at
+    // Note: filename is not in schema. user_id -> uploader_id. content_type -> mime_type. size_bytes -> size.
     await env.DB.prepare(
-      'INSERT INTO media (id, user_id, filename, content_type, size_bytes, r2_key, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+      'INSERT INTO media (id, uploader_id, r2_key, mime_type, size, created_at) VALUES (?, ?, ?, ?, ?, ?)'
     )
-      .bind(id, decoded.sub, file.name, file.type, file.size, r2Key, now)
+      .bind(id, decoded.sub, r2Key, file.type, file.size, now)
       .run();
 
     return new Response(
