@@ -102,12 +102,13 @@ if (!token) {
         line-height: 1.5;
     }
     .card-image {
-        width: calc(100% + 2rem);
-        margin: 0.5rem -1rem;
-        max-height: 500px;
-        object-fit: cover;
-        background: #eee;
         display: block;
+        max-width: 100%;
+        height: auto;
+        margin: 1rem auto;
+        border-radius: 0.5rem;
+        max-height: 600px;
+        object-fit: contain;
     }
     .actions {
         border-top: 1px solid var(--border);

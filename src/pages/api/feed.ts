@@ -54,6 +54,9 @@ export const GET: APIRoute = async ({ locals, url }) => {
     // we will fetch the DB page as requested, and merge ALL markdown posts, then sort and slice the current page in memory.
     // This works well if the total number of posts (DB + MD) is not huge (e.g. < 1000).
     
+    // Fetch enough DB posts to satisfy the current page without loading everything
+    const dbFetchLimit = offset + limit;
+
     const dbResult = await env.DB.prepare(`
       SELECT 
         p.id,
@@ -66,8 +69,11 @@ export const GET: APIRoute = async ({ locals, url }) => {
       FROM posts p
       LEFT JOIN users u ON p.user_id = u.id
       ORDER BY p.created_at DESC
-      LIMIT 1000
-    `).all();
+      LIMIT ?
+    `).bind(dbFetchLimit).all();
+
+    const dbCountRow = await env.DB.prepare('SELECT COUNT(*) as count FROM posts').first();
+    const dbTotal = dbCountRow?.count || 0;
 
     const dbPosts = (dbResult.results || []).map((post: any) => {
       // If we have media_refs, we might want to resolve them to URLs or just pass them through.
@@ -93,9 +99,9 @@ export const GET: APIRoute = async ({ locals, url }) => {
 
     // Merge and Sort
     const allPosts = [...formattedMarkdownPosts, ...dbPosts].sort((a, b) => b.created_at - a.created_at);
-    
-    // Paginate in memory
-    const total = allPosts.length;
+
+    // Paginate in memory using the already-limited DB result
+    const total = formattedMarkdownPosts.length + dbTotal;
     const paginatedPosts = allPosts.slice(offset, offset + limit);
 
     return new Response(

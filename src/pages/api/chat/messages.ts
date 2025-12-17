@@ -9,7 +9,14 @@ export const GET: APIRoute = async ({ request, locals, cookies }) => {
   const env = locals.runtime.env as any;
   
   // Verify authentication
-  const token = cookies.get('accessToken')?.value;
+  let token = cookies.get('accessToken')?.value;
+  if (!token) {
+    const authHeader = request.headers.get('Authorization');
+    if (authHeader?.startsWith('Bearer ')) {
+      token = authHeader.slice(7);
+    }
+  }
+
   if (!token) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
       status: 401,
@@ -55,7 +62,14 @@ export const POST: APIRoute = async ({ request, locals, cookies }) => {
   const env = locals.runtime.env as any;
   
   // Verify authentication
-  const token = cookies.get('accessToken')?.value;
+  let token = cookies.get('accessToken')?.value;
+  if (!token) {
+    const authHeader = request.headers.get('Authorization');
+    if (authHeader?.startsWith('Bearer ')) {
+      token = authHeader.slice(7);
+    }
+  }
+
   if (!token) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
       status: 401,

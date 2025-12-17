@@ -8,7 +8,7 @@ export const prerender = false;
 export const POST: APIRoute = async ({ request, locals, cookies }) => {
   const env = locals.runtime.env as any;
   
-  // Verify authentication
+  // Verify authentication (cookie only for this endpoint)
   const token = cookies.get('accessToken')?.value;
   if (!token) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
@@ -49,7 +49,7 @@ export const POST: APIRoute = async ({ request, locals, cookies }) => {
     // If media_id provided, verify it exists and belongs to user
     if (media_id) {
       const media = await env.DB.prepare(
-        'SELECT id FROM media WHERE id = ? AND user_id = ?'
+        'SELECT id FROM media WHERE id = ? AND uploader_id = ?'
       ).bind(media_id, decoded.sub).first();
       
       if (!media) {
@@ -63,11 +63,12 @@ export const POST: APIRoute = async ({ request, locals, cookies }) => {
     // Create post
     const id = crypto.randomUUID();
     const now = Math.floor(Date.now() / 1000);
+    const mediaRefs = media_id ? JSON.stringify([media_id]) : null;
     
     await env.DB.prepare(
-      'INSERT INTO posts (id, user_id, content, media_id, created_at) VALUES (?, ?, ?, ?, ?)'
+      'INSERT INTO posts (id, user_id, content, media_refs, created_at) VALUES (?, ?, ?, ?, ?)'
     )
-      .bind(id, decoded.sub, content.trim(), media_id || null, now)
+      .bind(id, decoded.sub, content.trim(), mediaRefs, now)
       .run();
 
     return new Response(
@@ -77,7 +78,7 @@ export const POST: APIRoute = async ({ request, locals, cookies }) => {
           id,
           user_id: decoded.sub,
           content: content.trim(),
-          media_id: media_id || null,
+          media_refs: mediaRefs,
           created_at: now
         }
       }), 

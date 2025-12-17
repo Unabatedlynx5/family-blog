@@ -19,15 +19,12 @@ export const GET: APIRoute = async ({ params, locals }) => {
         p.id,
         p.user_id,
         p.content,
+        p.media_refs,
         p.created_at,
         u.name,
-        u.email,
-        m.id as media_id,
-        m.filename as media_filename,
-        m.content_type as media_type
+        u.email
       FROM posts p
       LEFT JOIN users u ON p.user_id = u.id
-      LEFT JOIN media m ON p.media_id = m.id
       WHERE p.id = ?
     `).bind(postId).first();
 
@@ -38,12 +35,22 @@ export const GET: APIRoute = async ({ params, locals }) => {
       });
     }
 
-    if (post.media_id) {
-      post.media_url = `/api/media/${post.media_id}`;
-    }
+    const mediaRefs = (() => {
+      try {
+        return post.media_refs ? JSON.parse(post.media_refs) : [];
+      } catch (_e) {
+        return [];
+      }
+    })();
+
+    const media_urls = Array.isArray(mediaRefs)
+      ? mediaRefs.map((id: string) => `/api/media/${id}`)
+      : [];
+
+    delete post.media_refs;
 
     return new Response(
-      JSON.stringify({ post }), 
+      JSON.stringify({ post: { ...post, media_urls } }), 
       { 
         status: 200,
         headers: { 'Content-Type': 'application/json' }
