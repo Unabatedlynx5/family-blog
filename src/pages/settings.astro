@@ -1,0 +1,190 @@
+---
+import SocialLayout from '../layouts/SocialLayout.astro';
+
+export const prerender = false;
+
+// Check authentication
+const token = Astro.cookies.get('accessToken')?.value;
+if (!token) {
+  return Astro.redirect('/login');
+}
+---
+<SocialLayout title="Settings">
+  <style>
+    .settings-container {
+        background: var(--white);
+        border-radius: 0.75rem;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        padding: 2rem;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+    .settings-group {
+        margin-bottom: 2rem;
+        padding-bottom: 2rem;
+        border-bottom: 1px solid var(--border);
+    }
+    .settings-group:last-child {
+        border-bottom: none;
+    }
+    .settings-group h3 {
+        margin-top: 0;
+        margin-bottom: 1rem;
+        color: var(--text-main);
+    }
+    .form-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    .form-row label {
+        font-weight: 500;
+        color: var(--text-secondary);
+    }
+    select, input[type="checkbox"] {
+        padding: 0.5rem;
+        border-radius: 0.25rem;
+        border: 1px solid var(--border);
+    }
+    .btn-save {
+        background: var(--primary);
+        color: white;
+        border: none;
+        padding: 0.75rem 2rem;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        font-weight: 600;
+        width: 100%;
+        transition: background 0.2s;
+    }
+    .btn-save:hover {
+        background: #0062cc;
+    }
+    .status-msg {
+        margin-top: 1rem;
+        text-align: center;
+        font-size: 0.9rem;
+    }
+    .success { color: green; }
+    .error { color: red; }
+  </style>
+
+  <div class="settings-container">
+    <h2>Settings</h2>
+    
+    <div class="settings-group">
+        <h3>Appearance</h3>
+        <div class="form-row">
+            <label for="theme">Theme</label>
+            <select id="theme">
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+                <option value="system">System Default</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="settings-group">
+        <h3>Notifications</h3>
+        <div class="form-row">
+            <label for="notifications">Enable Notifications</label>
+            <input type="checkbox" id="notifications">
+        </div>
+    </div>
+
+    <div class="settings-group">
+        <h3>Language</h3>
+        <div class="form-row">
+            <label for="language">Language</label>
+            <select id="language">
+                <option value="en">English</option>
+                <option value="es">Spanish</option>
+                <option value="fr">French</option>
+            </select>
+        </div>
+    </div>
+
+    <button id="save-btn" class="btn-save">Save Changes</button>
+    <div id="status" class="status-msg"></div>
+  </div>
+
+  <script>
+    // Load settings on page load
+    async function loadSettings() {
+        const token = sessionStorage.getItem('accessToken');
+        if (!token) return;
+
+        try {
+            const res = await fetch('/api/settings', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const settings = await res.json();
+                const themeSelect = document.getElementById('theme') as HTMLSelectElement;
+                const notifCheck = document.getElementById('notifications') as HTMLInputElement;
+                const langSelect = document.getElementById('language') as HTMLSelectElement;
+
+                if (themeSelect) themeSelect.value = settings.theme || 'light';
+                if (notifCheck) notifCheck.checked = !!settings.notifications_enabled;
+                if (langSelect) langSelect.value = settings.language || 'en';
+
+                // Apply theme immediately
+                applyTheme(settings.theme);
+            }
+        } catch (e) {
+            console.error('Failed to load settings', e);
+        }
+    }
+
+    function applyTheme(theme: string) {
+        if (theme === 'dark') {
+            document.documentElement.classList.add('dark-theme');
+            document.body.style.backgroundColor = '#1c1e21';
+            document.body.style.color = '#e4e6eb';
+        } else {
+            document.documentElement.classList.remove('dark-theme');
+            document.body.style.backgroundColor = '';
+            document.body.style.color = '';
+        }
+    }
+
+    document.getElementById('save-btn')?.addEventListener('click', async () => {
+        const theme = (document.getElementById('theme') as HTMLSelectElement).value;
+        const notifications_enabled = (document.getElementById('notifications') as HTMLInputElement).checked;
+        const language = (document.getElementById('language') as HTMLSelectElement).value;
+        const statusEl = document.getElementById('status');
+        const token = sessionStorage.getItem('accessToken');
+
+        if (statusEl) statusEl.textContent = 'Saving...';
+
+        try {
+            const res = await fetch('/api/settings', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ theme, notifications_enabled, language })
+            });
+
+            if (res.ok) {
+                if (statusEl) {
+                    statusEl.textContent = 'Settings saved successfully!';
+                    statusEl.className = 'status-msg success';
+                }
+                applyTheme(theme);
+            } else {
+                throw new Error('Failed to save');
+            }
+        } catch (e) {
+            if (statusEl) {
+                statusEl.textContent = 'Error saving settings.';
+                statusEl.className = 'status-msg error';
+            }
+        }
+    });
+
+    loadSettings();
+  </script>
+</SocialLayout>
