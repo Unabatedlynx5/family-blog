@@ -13,23 +13,32 @@ if (!token) {
 ---
 <html>
   <head>
-    <BaseHead title="Admin" />
+    <BaseHead title="Admin" description="Admin Dashboard" />
   </head>
-  <body>
+  <body class="bg-white text-gray-900 antialiased">
     <Header />
-    <main class="container">
-      <h1>Admin - Create User</h1>
-      <form id="create-user">
-        <label>Email<br><input name="email" type="email" required></label><br>
-        <label>Name<br><input name="name" type="text"></label><br>
-        <label>Password<br><input name="password" type="password" required></label><br>
-        <button type="submit" class="button">Create user</button>
+    <main class="w-[960px] max-w-[calc(100%-2em)] mx-auto p-3">
+      <h1 class="text-4xl font-bold mb-8">Admin - Create User</h1>
+      <form id="create-user" class="max-w-md space-y-4">
+        <label class="block">
+          <span class="text-gray-700">Email</span>
+          <input name="email" type="email" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring focus:ring-accent focus:ring-opacity-50 p-2 border">
+        </label>
+        <label class="block">
+          <span class="text-gray-700">Name</span>
+          <input name="name" type="text" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring focus:ring-accent focus:ring-opacity-50 p-2 border">
+        </label>
+        <label class="block">
+          <span class="text-gray-700">Password</span>
+          <input name="password" type="password" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring focus:ring-accent focus:ring-opacity-50 p-2 border">
+        </label>
+        <button type="submit" class="bg-accent text-white px-4 py-2 rounded hover:bg-accent/80 transition-colors">Create user</button>
       </form>
-      <div id="result" style="margin-top:1rem;color:green"></div>
+      <div id="result" class="mt-4 text-green-600 font-medium"></div>
     </main>
     <Footer />
 
-    <script type="module">
+    <script type="module" is:inline>
       const form = document.getElementById('create-user');
       form.addEventListener('submit', async (e)=>{
         e.preventDefault();

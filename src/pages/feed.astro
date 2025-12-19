@@ -10,186 +10,24 @@ if (!token) {
 }
 ---
 <SocialLayout title="Feed">
-  <style is:global>
-    .composer {
-        background: var(--white);
-        padding: 1rem;
-        border-radius: 0.5rem;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-        margin-bottom: 1rem;
-    }
-    .composer textarea {
-        width: 100%;
-        border: none;
-        background: #f0f2f5;
-        padding: 1rem;
-        border-radius: 1.5rem;
-        resize: none;
-        font-family: inherit;
-        box-sizing: border-box;
-        margin-bottom: 1rem;
-    }
-    .composer-controls {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-top: 1px solid var(--border);
-        padding-top: 1rem;
-    }
-    .file-input-wrapper {
-        position: relative;
-        overflow: hidden;
-        display: inline-block;
-    }
-    .file-input-wrapper input[type=file] {
-        font-size: 100px;
-        position: absolute;
-        left: 0;
-        top: 0;
-        opacity: 0;
-    }
-    .btn-upload {
-        background: #e7f3ff;
-        color: var(--primary);
-        padding: 0.5rem 1rem;
-        border-radius: 0.5rem;
-        cursor: pointer;
-        font-weight: 600;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-    .btn-post {
-        background: var(--primary);
-        color: white;
-        border: none;
-        padding: 0.5rem 2rem;
-        border-radius: 0.5rem;
-        cursor: pointer;
-        font-weight: 600;
-    }
-    
-    .card {
-        background: var(--white);
-        border: 1px solid var(--border);
-        border-radius: 0.75rem;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        padding: 1.25rem;
-        margin-bottom: 1.5rem;
-        transition: box-shadow 0.2s ease;
-    }
-    .card:hover {
-        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-    }
-    .card-header {
-        display: flex;
-        align-items: center;
-        margin-bottom: 1rem;
-        padding-bottom: 0.75rem;
-        border-bottom: 1px solid #f0f2f5;
-    }
-    .avatar {
-        width: 40px;
-        height: 40px;
-        background: #ddd;
-        border-radius: 50%;
-        margin-right: 0.75rem;
-    }
-    .user-name { font-weight: 600; }
-    .time { font-size: 0.8rem; color: var(--text-secondary); }
-    .card-content {
-        margin-bottom: 1rem;
-        line-height: 1.5;
-    }
-    .card-image {
-        display: block;
-        max-width: 100%;
-        height: auto;
-        margin: 1rem auto;
-        border-radius: 0.5rem;
-        max-height: 600px;
-        object-fit: contain;
-    }
-    .actions {
-        border-top: 1px solid var(--border);
-        margin-top: 1rem;
-        padding-top: 0.5rem;
-        display: flex;
-        justify-content: space-around;
-    }
-    .action-btn {
-        padding: 0.5rem 1rem;
-        border-radius: 0.25rem;
-        cursor: pointer;
-        color: var(--text-secondary);
-        font-weight: 600;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        transition: background 0.2s;
-    }
-    .action-btn:hover { background: #f0f2f5; }
-    
-    /* Markdown Styles within Card */
-    .card-content.markdown-body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-        line-height: 1.6;
-        color: #1c1e21;
-    }
-    .card-content.markdown-body p {
-        margin-bottom: 0.5rem;
-    }
-    .card-content.markdown-body h1, 
-    .card-content.markdown-body h2, 
-    .card-content.markdown-body h3 {
-        margin-top: 1rem;
-        margin-bottom: 0.5rem;
-        font-weight: 600;
-    }
-    .card-content.markdown-body a {
-        color: var(--primary);
-        text-decoration: none;
-    }
-    .card-content.markdown-body a:hover {
-        text-decoration: underline;
-    }
-    .card-content.markdown-body blockquote {
-        border-left: 4px solid #ddd;
-        padding-left: 1rem;
-        color: #666;
-        margin: 0.5rem 0;
-    }
-    .card-content.markdown-body code {
-        background: #f0f2f5;
-        padding: 0.2rem 0.4rem;
-        border-radius: 4px;
-        font-family: monospace;
-        font-size: 0.9em;
-    }
-    .card-content.markdown-body pre {
-        background: #f0f2f5;
-        padding: 1rem;
-        border-radius: 8px;
-        overflow-x: auto;
-    }
-  </style>
 
-  <div id="composer" class="composer">
-    <textarea id="content" rows="3" placeholder="What's on your mind?"></textarea>
-    <div class="composer-controls">
-      <div class="file-input-wrapper">
-        <div class="btn-upload">
+
+  <div id="composer" class="bg-white p-4 rounded-lg shadow-sm mb-4">
+    <textarea id="content" rows="3" placeholder="What's on your mind?" class="w-full border-none bg-[#f0f2f5] p-4 rounded-3xl resize-none font-inherit box-border mb-4 focus:outline-none"></textarea>
+    <div class="flex justify-between items-center border-t border-[#e4e6eb] pt-4">
+      <div class="relative overflow-hidden inline-block">
+        <div class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#f0f2f5] cursor-pointer text-[#65676b] font-semibold">
             <span>🖼️</span> Photo
         </div>
-        <input id="file" type="file" accept="image/*" />
+        <input id="file" type="file" accept="image/*" class="absolute left-0 top-0 opacity-0 w-full h-full cursor-pointer text-[100px]" />
       </div>
-      <button id="post" class="btn-post">Post</button>
+      <button id="post" class="px-8 py-2 bg-[#667eea] text-white border-none rounded-lg font-bold cursor-pointer hover:bg-[#5a6fd6]">Post</button>
     </div>
   </div>
 
-  <div id="posts"></div>
+  <div id="posts" class="flex flex-col gap-4"></div>
 
-  <script type="module">
+  <script type="module" is:inline>
     import { marked } from "https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js";
 
     async function loadFeed(){
@@ -200,7 +38,7 @@ if (!token) {
       container.innerHTML = '';
       for(const p of posts){
         const el = document.createElement('div');
-        el.className = 'card';
+        el.className = 'bg-white rounded-lg shadow-sm p-4';
         
         let contentHtml = p.content;
         // Always treat content as markdown
@@ -212,7 +50,7 @@ if (!token) {
 
         let mediaHtml = '';
         if (p.media_url) {
-            mediaHtml = `<img src="${p.media_url}" class="card-image" alt="Post image" loading="lazy" />`;
+            mediaHtml = `<img src="${p.media_url}" class="block max-w-full h-auto mx-auto my-4 rounded-lg max-h-[600px] object-contain" alt="Post image" loading="lazy" />`;
         }
         
         const dateStr = p.created_at ? new Date(p.created_at*1000).toLocaleString(undefined, {
@@ -220,20 +58,20 @@ if (!token) {
         }) : '';
 
         el.innerHTML = `
-          <div class="card-header">
-            <div class="avatar"></div>
+          <div class="flex items-center mb-3">
+            <div class="w-10 h-10 bg-[#ddd] rounded-full mr-3"></div>
             <div>
-              <div class="user-name">${p.name || p.user_id || (p.source==='markdown'? 'System' : 'Anonymous')}</div>
-              <div class="time">${dateStr}</div>
+              <div class="font-bold text-[#1c1e21]">${p.name || p.user_id || (p.source==='markdown'? 'System' : 'Anonymous')}</div>
+              <div class="text-xs text-[#65676b]">${dateStr}</div>
             </div>
           </div>
-          <div class="card-content markdown-body">${contentHtml}</div>
+          <div class="text-[#1c1e21] leading-relaxed prose max-w-none">${contentHtml}</div>
           ${mediaHtml}
-          <div class="actions">
-            <div class="action-btn">
+          <div class="border-t border-[#e4e6eb] mt-4 pt-2 flex justify-around">
+            <div class="px-4 py-2 rounded cursor-pointer text-[#65676b] font-semibold flex items-center gap-2 hover:bg-[#f0f2f5]">
                 <span>👍</span> Like
             </div>
-            <div class="action-btn">
+            <div class="px-4 py-2 rounded cursor-pointer text-[#65676b] font-semibold flex items-center gap-2 hover:bg-[#f0f2f5]">
                 <span>💬</span> Comment
             </div>
           </div>

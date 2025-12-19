@@ -1,12 +1,12 @@
 ---
-import { type CollectionEntry, getCollection } from 'astro:content';
+import { getCollection } from 'astro:content';
 import BlogPost from '../../layouts/BlogPost.astro';
 import { render } from 'astro:content';
 
 export const prerender = false;
 
 // Check authentication
-// Note: Since we are prerendering, we cannot check cookies here.
+// Note: Since we are pre-rendering, we cannot check cookies here.
 // Authentication for static pages needs to be handled client-side or via middleware for non-static routes.
 // However, the user wants to keep markdown posts as is.
 // If we want to protect them, we cannot use `prerender = true`.

@@ -3,10 +3,10 @@ import HeaderLink from './HeaderLink.astro';
 import { SITE_TITLE } from '../consts';
 ---
 
-<header>
-	<nav>
-		<h2><a href="/">{SITE_TITLE}</a></h2>
-		<div class="internal-links">
+<header class="m-0 px-4 bg-white shadow-[0_2px_8px_rgba(15,18,25,0.05)]">
+	<nav class="flex items-center justify-between gap-4">
+		<h2 class="m-0 text-base"><a href="/">{SITE_TITLE}</a></h2>
+		<div class="internal-links flex gap-2 items-center flex-wrap md:flex-nowrap">
 			<HeaderLink href="/">Home</HeaderLink>
 			<HeaderLink href="/feed">Feed</HeaderLink>
 			<HeaderLink href="/chat">Chat</HeaderLink>
@@ -14,57 +14,17 @@ import { SITE_TITLE } from '../consts';
 			<HeaderLink href="/about">About</HeaderLink>
 			<HeaderLink href="/settings">Settings</HeaderLink>
 		</div>
-		<div class="actions">
-			<a id="auth-link" href="/login">Sign in</a>
+		<div class="actions flex items-center">
+			<a id="auth-link" href="/login" class="px-3 py-2 rounded-md bg-black/5 no-underline text-black">Sign in</a>
 		</div>
 	</nav>
 </header>
-<style>
-	header {
-		margin: 0;
-		padding: 0 1em;
-		background: white;
-		box-shadow: 0 2px 8px rgba(var(--black), 5%);
-	}
-	h2 {
-		margin: 0;
-		font-size: 1em;
-	}
-
-	nav {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 1rem;
-	}
-	.internal-links {
-		display: flex;
-		gap: 0.5rem;
-		align-items: center;
-	}
-	.actions {
-		display: flex;
-		align-items: center;
-	}
-	.actions a {
-		padding: 0.5rem 0.75rem;
-		border-radius: 6px;
-		background: var(--accent-transparent, rgba(0,0,0,0.03));
-		text-decoration: none;
-		color: var(--black);
-	}
-	@media (max-width: 720px) {
-		.internal-links {
-			flex-wrap: wrap;
-		}
-	}
-</style>
 
 <script>
 // client-side: toggle auth link text based on stored access token
 (function(){
   try{
-    const a = document.getElementById('auth-link');
+    const a = document.getElementById('auth-link') as HTMLAnchorElement | null;
     const token = sessionStorage.getItem('accessToken');
     if(!a) return;
     if(token){

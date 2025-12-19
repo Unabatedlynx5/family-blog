@@ -1,6 +1,5 @@
 ---
 import BaseHead from '../components/BaseHead.astro';
-import { SITE_TITLE } from '../consts';
 
 const { title = 'Family Feed' } = Astro.props;
 ---
@@ -9,203 +8,76 @@ const { title = 'Family Feed' } = Astro.props;
 <html lang="en">
 <head>
     <BaseHead title={title} description="Family Social Feed" />
-    <style is:global>
-        :root {
-            --primary: #667eea;
-            --bg: #f0f2f5;
-            --white: #ffffff;
-            --border: #e4e6eb;
-            --text-main: #1c1e21;
-            --text-secondary: #65676b;
-        }
-        body {
-            background: var(--bg);
-            color: var(--text-main);
-            margin: 0;
-            font-family: system-ui, -apple-system, sans-serif;
-        }
-        
-        /* Navbar */
-        .navbar {
-            background: var(--white);
-            padding: 0.5rem 1rem;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            height: 56px;
-            box-sizing: border-box;
-        }
-        .logo { 
-            font-weight: 800; 
-            font-size: 1.5rem; 
-            color: var(--primary); 
-            text-decoration: none;
-        }
-        .nav-search {
-            background: #f0f2f5;
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            color: var(--text-secondary);
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            width: 300px;
-        }
-        .nav-profile {
-            width: 40px;
-            height: 40px;
-            background: #ddd;
-            border-radius: 50%;
-            cursor: pointer;
-        }
-
-        /* Layout Grid */
-        .social-container {
-            display: grid;
-            grid-template-columns: 280px 1fr 280px;
-            gap: 2rem;
-            max-width: 1200px;
-            margin: 2rem auto;
-            padding: 0 1rem;
-            align-items: start;
-        }
-
-        /* Left Sidebar */
-        .left-sidebar {
-            position: sticky;
-            top: 5.5rem;
-        }
-        .menu-item {
-            display: flex;
-            align-items: center;
-            padding: 0.75rem;
-            border-radius: 0.5rem;
-            cursor: pointer;
-            transition: background 0.2s;
-            font-weight: 600;
-            color: var(--text-main);
-            text-decoration: none;
-            margin-bottom: 0.25rem;
-        }
-        .menu-item:hover { background: #e4e6eb; }
-        .menu-item.active { background: #e7f3ff; color: var(--primary); }
-        .icon { margin-right: 1rem; font-size: 1.5rem; width: 24px; text-align: center; }
-
-        /* Main Content Area */
-        .feed-content {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-            min-width: 0; /* Prevent overflow */
-        }
-
-        /* Right Sidebar */
-        .right-sidebar {
-            position: sticky;
-            top: 5.5rem;
-        }
-        .widget {
-            background: var(--white);
-            border-radius: 0.5rem;
-            padding: 1rem;
-            margin-bottom: 1rem;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-        }
-        .widget h3 {
-            font-size: 1rem;
-            color: var(--text-secondary);
-            margin-top: 0;
-            margin-bottom: 1rem;
-        }
-        .online-list .user {
-            display: flex;
-            align-items: center;
-            margin-bottom: 0.5rem;
-            padding: 0.25rem;
-            border-radius: 0.25rem;
-            cursor: pointer;
-        }
-        .online-list .user:hover { background: #f0f2f5; }
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            background: #31a24c;
-            border-radius: 50%;
-            margin-left: auto;
-        }
-
-        /* Responsive */
-        @media (max-width: 1100px) {
-            .social-container { grid-template-columns: 200px 1fr 200px; gap: 1rem; }
-        }
-        @media (max-width: 900px) {
-            .social-container { grid-template-columns: 60px 1fr; }
-            .right-sidebar { display: none; }
-            .menu-item span:not(.icon) { display: none; }
-            .icon { margin-right: 0; }
-            .menu-item { justify-content: center; }
-        }
-        @media (max-width: 600px) {
-            .social-container { grid-template-columns: 1fr; }
-            .left-sidebar { display: none; } /* Or move to bottom nav */
-        }
-    </style>
 </head>
-<body>
-    <nav class="navbar">
-        <a href="/" class="logo">FamilyBlog</a>
-        <div class="nav-search">
+<body class="bg-[#f0f2f5] text-[#1c1e21] m-0 font-sans">
+    <nav class="bg-white px-4 py-2 shadow-sm sticky top-0 z-50 flex justify-between items-center h-14 box-border">
+        <a href="/" class="font-extrabold text-2xl text-[#667eea] no-underline">FamilyBlog</a>
+        <div class="bg-[#f0f2f5] px-4 py-2 rounded-full text-[#65676b] flex items-center gap-2 w-[300px] hidden md:flex">
             <span>🔍</span> Search family...
         </div>
-        <div class="nav-profile"></div>
+        <div class="w-10 h-10 bg-[#ddd] rounded-full cursor-pointer"></div>
     </nav>
 
-    <div class="social-container">
+    <div class="grid grid-cols-1 md:grid-cols-[60px_1fr] lg:grid-cols-[280px_1fr_280px] gap-8 max-w-[1200px] mx-auto my-8 px-4 items-start">
         <!-- Left Sidebar -->
-        <aside class="left-sidebar">
-            <a href="/feed" class="menu-item">
-                <span class="icon">🏠</span> <span>Home</span>
+        <aside class="sticky top-[5.5rem] hidden md:block">
+            <a href="/feed" class="flex items-center p-3 rounded-lg cursor-pointer transition-colors hover:bg-[#e4e6eb] font-semibold text-[#1c1e21] no-underline mb-1 justify-center lg:justify-start">
+                <span class="text-2xl w-6 text-center lg:mr-4">🏠</span> <span class="hidden lg:inline">Home</span>
             </a>
-            <a href="/chat" class="menu-item">
-                <span class="icon">💬</span> <span>Chat</span>
+            <a href="/chat" class="flex items-center p-3 rounded-lg cursor-pointer transition-colors hover:bg-[#e4e6eb] font-semibold text-[#1c1e21] no-underline mb-1 justify-center lg:justify-start">
+                <span class="text-2xl w-6 text-center lg:mr-4">💬</span> <span class="hidden lg:inline">Chat</span>
             </a>
-            <a href="/members" class="menu-item">
-                <span class="icon">👥</span> <span>Members</span>
+            <a href="/members" class="flex items-center p-3 rounded-lg cursor-pointer transition-colors hover:bg-[#e4e6eb] font-semibold text-[#1c1e21] no-underline mb-1 justify-center lg:justify-start">
+                <span class="text-2xl w-6 text-center lg:mr-4">👥</span> <span class="hidden lg:inline">Members</span>
             </a>
-            <a href="/photos" class="menu-item">
-                <span class="icon">📸</span> <span>Photos</span>
+            <a href="/photos" class="flex items-center p-3 rounded-lg cursor-pointer transition-colors hover:bg-[#e4e6eb] font-semibold text-[#1c1e21] no-underline mb-1 justify-center lg:justify-start">
+                <span class="text-2xl w-6 text-center lg:mr-4">📸</span> <span class="hidden lg:inline">Photos</span>
             </a>
-            <a href="/admin" class="menu-item">
-                <span class="icon">⚙️</span> <span>Settings</span>
+            <a href="/settings" class="flex items-center p-3 rounded-lg cursor-pointer transition-colors hover:bg-[#e4e6eb] font-semibold text-[#1c1e21] no-underline mb-1 justify-center lg:justify-start">
+                <span class="text-2xl w-6 text-center lg:mr-4">⚙️</span> <span class="hidden lg:inline">Settings</span>
             </a>
         </aside>
 
         <!-- Main Feed -->
-        <main class="feed-content">
+        <main class="flex flex-col gap-4 min-w-0">
+            <!-- Mobile Navigation -->
+            <div class="flex justify-between md:hidden overflow-x-auto mb-2">
+                <a href="/feed" class="flex items-center justify-center p-3 min-w-[50px] text-[#1c1e21] no-underline hover:bg-[#e4e6eb] rounded-lg">
+                    <span class="text-2xl">🏠</span>
+                </a>
+                <a href="/chat" class="flex items-center justify-center p-3 min-w-[50px] text-[#1c1e21] no-underline hover:bg-[#e4e6eb] rounded-lg">
+                    <span class="text-2xl">💬</span>
+                </a>
+                <a href="/members" class="flex items-center justify-center p-3 min-w-[50px] text-[#1c1e21] no-underline hover:bg-[#e4e6eb] rounded-lg">
+                    <span class="text-2xl">👥</span>
+                </a>
+                <a href="/photos" class="flex items-center justify-center p-3 min-w-[50px] text-[#1c1e21] no-underline hover:bg-[#e4e6eb] rounded-lg">
+                    <span class="text-2xl">📸</span>
+                </a>
+                <a href="/settings" class="flex items-center justify-center p-3 min-w-[50px] text-[#1c1e21] no-underline hover:bg-[#e4e6eb] rounded-lg">
+                    <span class="text-2xl">⚙️</span>
+                </a>
+            </div>
             <slot />
         </main>
 
         <!-- Right Sidebar -->
-        <aside class="right-sidebar">
-            <div class="widget">
-                <h3>Birthdays</h3>
+        <aside class="sticky top-[5.5rem] hidden lg:block">
+            <div class="bg-white rounded-lg p-4 mb-4 shadow-sm">
+                <h3 class="text-base text-[#65676b] mt-0 mb-4">Birthdays</h3>
                 <p>🎂 <strong>Uncle Bob</strong>'s birthday is tomorrow!</p>
             </div>
-            <div class="widget online-list">
-                <h3>Online Family</h3>
-                <div class="user">
-                    <div class="avatar" style="width: 30px; height: 30px; background: #ddd; border-radius: 50%; margin-right: 0.5rem;"></div>
+            <div class="bg-white rounded-lg p-4 mb-4 shadow-sm">
+                <h3 class="text-base text-[#65676b] mt-0 mb-4">Online Family</h3>
+                <div class="flex items-center mb-2 p-1 rounded cursor-pointer hover:bg-[#f0f2f5]">
+                    <div class="w-[30px] h-[30px] bg-[#ddd] rounded-full mr-2"></div>
                     <span>Sarah</span>
-                    <div class="status-dot"></div>
+                    <div class="w-2 h-2 bg-[#31a24c] rounded-full ml-auto"></div>
                 </div>
-                <div class="user">
-                    <div class="avatar" style="width: 30px; height: 30px; background: #ddd; border-radius: 50%; margin-right: 0.5rem;"></div>
+                <div class="flex items-center mb-2 p-1 rounded cursor-pointer hover:bg-[#f0f2f5]">
+                    <div class="w-[30px] h-[30px] bg-[#ddd] rounded-full mr-2"></div>
                     <span>Mom</span>
-                    <div class="status-dot"></div>
+                    <div class="w-2 h-2 bg-[#31a24c] rounded-full ml-auto"></div>
                 </div>
             </div>
         </aside>

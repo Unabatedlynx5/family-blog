@@ -1,5 +1,3 @@
-import fs from 'fs';
-import path from 'path';
 import bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
 
