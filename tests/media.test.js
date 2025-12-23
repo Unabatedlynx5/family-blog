@@ -82,14 +82,15 @@ describe('Media API Tests', () => {
       JWT_SECRET: 'test-secret'
     };
 
-    mockLocals = {
-      runtime: { env }
-    };
-
     // Create a user
     userId = 'user-123';
     sqlite.prepare('INSERT INTO users (id, email, password_hash, name, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?)')
       .run(userId, 'user@example.com', 'hash', 'Test User', 1, Date.now());
+
+    mockLocals = {
+      runtime: { env },
+      user: { sub: userId, email: 'user@example.com', name: 'Test User' }
+    };
 
     // Generate valid token
     validToken = jwt.sign({ sub: userId, email: 'user@example.com' }, 'test-secret', { expiresIn: '1h' });

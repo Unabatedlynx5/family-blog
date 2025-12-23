@@ -69,11 +69,21 @@ class MockState {
       delete: async (key) => this.storage.data.delete(key)
     };
     this.initPromise = Promise.resolve();
+    this.websockets = [];
   }
 
   blockConcurrencyWhile(callback) {
     this.initPromise = callback();
     return this.initPromise;
+  }
+
+  acceptWebSocket(ws) {
+    this.websockets.push(ws);
+    ws.accept();
+  }
+
+  getWebSockets() {
+    return this.websockets;
   }
 }
 
@@ -81,16 +91,24 @@ describe('GlobalChat Durable Object Tests', () => {
   let chat;
   let state;
   let env;
+  let mockDb;
 
   beforeEach(async () => {
     state = new MockState();
-    env = {};
+    mockDb = {
+      prepare: vi.fn().mockReturnValue({
+        bind: vi.fn().mockReturnValue({
+          run: vi.fn().mockResolvedValue({})
+        })
+      })
+    };
+    env = { DB: mockDb };
     chat = new GlobalChat(state, env);
-    await state.initPromise;
+    // await state.initPromise; // No longer needed as we removed blockConcurrencyWhile
   });
 
-  it('should initialize with empty messages', async () => {
-    expect(chat.messages).toEqual([]);
+  it('should initialize', async () => {
+    expect(chat).toBeDefined();
   });
 
   it('should handle websocket upgrade', async () => {
@@ -101,6 +119,7 @@ describe('GlobalChat Durable Object Tests', () => {
     const res = await chat.fetch(req);
     expect(res.status).toBe(101);
     expect(res.webSocket).toBeDefined();
+    expect(state.websockets.length).toBe(1);
   });
 
   it('should reject non-websocket requests', async () => {
@@ -109,84 +128,46 @@ describe('GlobalChat Durable Object Tests', () => {
     expect(res.status).toBe(400);
   });
 
-  it('should send history on connect', async () => {
-    // Pre-populate messages
-    const history = [{ id: '1', user: 'User', text: 'Hello', created_at: 123 }];
-    await state.storage.put('messages', history);
-    
-    // Re-init to load storage
-    chat = new GlobalChat(state, env);
-    await state.initPromise;
-
+  it('should NOT send history on connect (now handled by API)', async () => {
     const req = new Request('http://localhost/api/chat/connect', {
       headers: { 'Upgrade': 'websocket' }
     });
     
     const res = await chat.fetch(req);
-    const clientWs = res.webSocket;
     
-    // The server side socket is where the DO writes to
-    // In our mock, we need to access the server socket that was created inside fetch
-    // But fetch returns the client socket.
-    // We can spy on handleSession or just check the client socket if we linked them.
-    // Since our MockWebSocketPair returns independent mocks, we can't easily check what was sent to 'client' 
-    // by inspecting 'client' unless we link them.
-    
-    // Let's inspect the internal sockets map of the chat instance
-    // Wait for async handleSession to finish (it's awaited in fetch)
-    
-    expect(chat.sockets.size).toBe(1);
-    const serverWs = chat.sockets.values().next().value;
-    
-    expect(serverWs.sentMessages.length).toBe(1);
-    const msg = JSON.parse(serverWs.sentMessages[0]);
-    expect(msg.type).toBe('history');
-    expect(msg.messages).toEqual(history);
+    // Check that NO history message was sent immediately
+    // The server socket is in state.websockets[0]
+    const serverWs = state.websockets[0];
+    expect(serverWs.sentMessages.length).toBe(0);
   });
 
-  it('should broadcast messages', async () => {
+  it('should broadcast messages and save to DB', async () => {
     const req = new Request('http://localhost/api/chat/connect', {
       headers: { 'Upgrade': 'websocket' }
     });
     await chat.fetch(req);
     
-    const serverWs = chat.sockets.values().next().value;
+    const serverWs = state.websockets[0];
     
     // Simulate incoming message
-    const payload = { type: 'message', user: 'Alice', text: 'Hi Bob' };
-    await serverWs.trigger('message', { data: JSON.stringify(payload) });
+    const payload = { type: 'message', user: 'Alice', userId: 'u1', email: 'alice@example.com', text: 'Hi Bob' };
+    await chat.webSocketMessage(serverWs, JSON.stringify(payload));
     
     // Check broadcast
-    // It should send to all sockets (including sender)
-    // The first message was history, second should be the new message
-    expect(serverWs.sentMessages.length).toBe(2);
-    const broadcastMsg = JSON.parse(serverWs.sentMessages[1]);
+    expect(serverWs.sentMessages.length).toBe(1);
+    const broadcastMsg = JSON.parse(serverWs.sentMessages[0]);
     expect(broadcastMsg.type).toBe('message');
     expect(broadcastMsg.message.user).toBe('Alice');
     expect(broadcastMsg.message.text).toBe('Hi Bob');
     
-    // Check storage
-    expect(chat.messages.length).toBe(1);
-    expect(chat.messages[0].text).toBe('Hi Bob');
+    // Check DB insertion
+    expect(mockDb.prepare).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO chat_messages'));
   });
 
   it('should cleanup messages via DELETE', async () => {
-    // Add some messages
-    chat.messages = [
-      { id: '1', user: 'Anonymous', text: 'spam' },
-      { id: '2', user: 'User', text: 'valid' },
-      { id: '3', user: 'User', text: '   ' } // empty
-    ];
-    
-    const req = new Request('http://localhost/api/chat/connect', {
-      method: 'DELETE'
-    });
-    
+    // Not implemented anymore
+    const req = new Request('http://localhost/api/chat/connect', { method: 'DELETE' });
     const res = await chat.fetch(req);
-    const data = await res.json();
-    
-    expect(data.deleted).toBe(2); // Anonymous and empty
-    expect(data.remaining).toBe(1);
-    expect(chat.messages[0].text).toBe('valid');
+    expect(res.status).toBe(501);
   });
 });

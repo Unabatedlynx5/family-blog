@@ -6,8 +6,8 @@ import Footer from '../components/Footer.astro';
 export const prerender = false;
 
 // If already authenticated, redirect to feed
-const token = Astro.cookies.get('accessToken')?.value;
-if (token) {
+const user = Astro.locals.user;
+if (user) {
   return Astro.redirect('/feed');
 }
 ---

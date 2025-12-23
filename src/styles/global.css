@@ -18,14 +18,31 @@
 }
 
 @layer base {
+  :root {
+    --bg-gradient-from: rgba(229, 233, 240, 0.5);
+    --bg-gradient-to: #fff;
+    --text-main: #4b5563; /* gray-dark */
+    --text-heading: #000;
+  }
+
+  :root.dark {
+    --bg-gradient-from: #18191a;
+    --bg-gradient-to: #242526;
+    --text-main: #e4e6eb;
+    --text-heading: #ffffff;
+  }
+
   body {
-    @apply font-sans text-gray-dark text-xl leading-relaxed bg-no-repeat;
-    background-image: linear-gradient(rgba(229, 233, 240, 0.5), #fff);
+    @apply font-sans text-xl leading-relaxed bg-no-repeat transition-colors duration-300;
+    color: var(--text-main);
+    background-image: linear-gradient(var(--bg-gradient-from), var(--bg-gradient-to));
     background-size: 100% 600px;
+    background-color: var(--bg-gradient-to); /* Fallback/Bottom color */
   }
   
   h1, h2, h3, h4, h5, h6 {
-    @apply mb-2 text-black leading-tight;
+    @apply mb-2 leading-tight;
+    color: var(--text-heading);
   }
   
   h1 { @apply text-5xl; }

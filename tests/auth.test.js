@@ -151,12 +151,16 @@ describe('Authentication Tests', () => {
     const data = await res.json();
     expect(data.accessToken).toBeDefined();
     expect(data.user.email).toBe('user@example.com');
+    expect(data.user.name).toBe('Test User');
     
     // Check if refresh token cookie was set
     expect(cookies.set).toHaveBeenCalled();
-    const cookieCall = cookies.set.mock.calls[1]; // 0 is accessToken, 1 is refresh
-    expect(cookieCall[0]).toBe('refresh');
-    expect(cookieCall[2]).toMatchObject({ httpOnly: true });
+    // The order of cookie setting might vary or be implementation detail, 
+    // but we expect both 'accessToken' and 'refresh' to be set.
+    const calls = cookies.set.mock.calls;
+    const refreshCall = calls.find(call => call[0] === 'refresh');
+    expect(refreshCall).toBeDefined();
+    expect(refreshCall[2]).toMatchObject({ httpOnly: true });
   });
 
   it('should fail login with wrong password', async () => {

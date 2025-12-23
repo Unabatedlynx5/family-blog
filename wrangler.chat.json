@@ -10,6 +10,13 @@
       }
     ]
   },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "family_blog_db",
+      "database_id": "27f6f3e9-aa0b-438b-9caf-338439859061"
+    }
+  ],
   "migrations": [
     {
       "tag": "v1",

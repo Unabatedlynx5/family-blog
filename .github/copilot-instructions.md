@@ -43,6 +43,13 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to be product
   - Worker/Durable Object logic: [workers/GlobalChat.js](workers/GlobalChat.js)
   - Database issues: `migrations/` SQL and code that calls D1 in `src/pages/api/*`.
 
+- **Current Focus & Todo**:
+  - [ ] Improve test coverage for chat Durable Object (especially edge cases).
+  - [ ] Improve test coverage for media upload and R2 interactions.
+  - [ ] Add end-to-end tests for key user flows (auth, posting, chat).
+  - [ ] Add a toolbar for editing blog posts and make a user friendly way to add markdown content.
+  - [ ] 
+
 References: README ([README.md](README.md)), test guide ([tests/README.md](tests/README.md)), `package.json` scripts ([package.json](package.json)).
 
 If anything is unclear or you'd like more detail (examples of request/response shapes or typical test mocks), tell me which part to expand. 

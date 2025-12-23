@@ -5,12 +5,10 @@ import { verifyAccessToken } from '../../../../workers/utils/auth.js';
 export const prerender = false;
 
 // Create a new post
-export const POST: APIRoute = async ({ request, locals, cookies }) => {
+export const POST: APIRoute = async ({ request, locals }) => {
   const env = locals.runtime.env as any;
   
-  // Verify authentication (cookie only for this endpoint)
-  const token = cookies.get('accessToken')?.value;
-  if (!token) {
+  if (!locals.user) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
       status: 401,
       headers: { 'Content-Type': 'application/json' }
@@ -18,15 +16,6 @@ export const POST: APIRoute = async ({ request, locals, cookies }) => {
   }
 
   try {
-    const jwtSecret = await env.JWT_SECRET;
-    const decoded = verifyAccessToken(token, { JWT_SECRET: jwtSecret });
-    if (!decoded) {
-      return new Response(JSON.stringify({ error: 'Invalid token' }), { 
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
     let body;
     try {
       body = await request.json();
@@ -50,7 +39,7 @@ export const POST: APIRoute = async ({ request, locals, cookies }) => {
     if (media_id) {
       const media = await env.DB.prepare(
         'SELECT id FROM media WHERE id = ? AND uploader_id = ?'
-      ).bind(media_id, decoded.sub).first();
+      ).bind(media_id, locals.user!.sub).first();
       
       if (!media) {
         return new Response(JSON.stringify({ error: 'Invalid media ID' }), { 
@@ -68,7 +57,7 @@ export const POST: APIRoute = async ({ request, locals, cookies }) => {
     await env.DB.prepare(
       'INSERT INTO posts (id, user_id, content, media_refs, created_at) VALUES (?, ?, ?, ?, ?)'
     )
-      .bind(id, decoded.sub, content.trim(), mediaRefs, now)
+      .bind(id, locals.user!.sub, content.trim(), mediaRefs, now)
       .run();
 
     return new Response(
@@ -76,7 +65,7 @@ export const POST: APIRoute = async ({ request, locals, cookies }) => {
         ok: true,
         post: {
           id,
-          user_id: decoded.sub,
+          user_id: locals.user!.sub,
           content: content.trim(),
           media_refs: mediaRefs,
           created_at: now

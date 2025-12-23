@@ -4,19 +4,19 @@ import SocialLayout from '../layouts/SocialLayout.astro';
 export const prerender = false;
 
 // Check authentication
-const token = Astro.cookies.get('accessToken')?.value;
-if (!token) {
+const user = Astro.locals.user;
+if (!user) {
   return Astro.redirect('/login');
 }
 ---
 <SocialLayout title="Feed">
 
 
-  <div id="composer" class="bg-white p-4 rounded-lg shadow-sm mb-4">
-    <textarea id="content" rows="3" placeholder="What's on your mind?" class="w-full border-none bg-[#f0f2f5] p-4 rounded-3xl resize-none font-inherit box-border mb-4 focus:outline-none"></textarea>
-    <div class="flex justify-between items-center border-t border-[#e4e6eb] pt-4">
+  <div id="composer" class="bg-white dark:bg-[#242526] p-4 rounded-lg shadow-sm mb-4">
+    <textarea id="content" rows="3" placeholder="What's on your mind?" class="w-full border-none bg-[#f0f2f5] dark:bg-[#3a3b3c] dark:text-[#e4e6eb] p-4 rounded-3xl resize-none font-inherit box-border mb-4 focus:outline-none"></textarea>
+    <div class="flex justify-between items-center border-t border-[#e4e6eb] dark:border-[#3e4042] pt-4">
       <div class="relative overflow-hidden inline-block">
-        <div class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#f0f2f5] cursor-pointer text-[#65676b] font-semibold">
+        <div class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#f0f2f5] dark:hover:bg-[#3a3b3c] cursor-pointer text-[#65676b] dark:text-[#b0b3b8] font-semibold">
             <span>🖼️</span> Photo
         </div>
         <input id="file" type="file" accept="image/*" class="absolute left-0 top-0 opacity-0 w-full h-full cursor-pointer text-[100px]" />
@@ -38,7 +38,7 @@ if (!token) {
       container.innerHTML = '';
       for(const p of posts){
         const el = document.createElement('div');
-        el.className = 'bg-white rounded-lg shadow-sm p-4';
+        el.className = 'bg-white dark:bg-[#242526] rounded-lg shadow-sm p-4';
         
         let contentHtml = p.content;
         // Always treat content as markdown
@@ -61,17 +61,17 @@ if (!token) {
           <div class="flex items-center mb-3">
             <div class="w-10 h-10 bg-[#ddd] rounded-full mr-3"></div>
             <div>
-              <div class="font-bold text-[#1c1e21]">${p.name || p.user_id || (p.source==='markdown'? 'System' : 'Anonymous')}</div>
-              <div class="text-xs text-[#65676b]">${dateStr}</div>
+              <div class="font-bold text-[#1c1e21] dark:text-[#e4e6eb]">${p.name || p.user_id || (p.source==='markdown'? 'System' : 'Anonymous')}</div>
+              <div class="text-xs text-[#65676b] dark:text-[#b0b3b8]">${dateStr}</div>
             </div>
           </div>
-          <div class="text-[#1c1e21] leading-relaxed prose max-w-none">${contentHtml}</div>
+          <div class="text-[#1c1e21] dark:text-[#e4e6eb] leading-relaxed prose dark:prose-invert max-w-none">${contentHtml}</div>
           ${mediaHtml}
-          <div class="border-t border-[#e4e6eb] mt-4 pt-2 flex justify-around">
-            <div class="px-4 py-2 rounded cursor-pointer text-[#65676b] font-semibold flex items-center gap-2 hover:bg-[#f0f2f5]">
+          <div class="border-t border-[#e4e6eb] dark:border-[#3e4042] mt-4 pt-2 flex justify-around">
+            <div class="px-4 py-2 rounded cursor-pointer text-[#65676b] dark:text-[#b0b3b8] font-semibold flex items-center gap-2 hover:bg-[#f0f2f5] dark:hover:bg-[#3a3b3c]">
                 <span>👍</span> Like
             </div>
-            <div class="px-4 py-2 rounded cursor-pointer text-[#65676b] font-semibold flex items-center gap-2 hover:bg-[#f0f2f5]">
+            <div class="px-4 py-2 rounded cursor-pointer text-[#65676b] dark:text-[#b0b3b8] font-semibold flex items-center gap-2 hover:bg-[#f0f2f5] dark:hover:bg-[#3a3b3c]">
                 <span>💬</span> Comment
             </div>
           </div>

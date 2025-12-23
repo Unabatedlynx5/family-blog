@@ -4,16 +4,14 @@ import SocialLayout from '../layouts/SocialLayout.astro';
 export const prerender = false;
 
 // Check authentication
-const token = Astro.cookies.get('accessToken')?.value;
-if (!token) {
+const currentUser = Astro.locals.user;
+if (!currentUser) {
   return Astro.redirect('/login');
 }
 
 let user = { name: '', email: '', avatar_url: '' };
 try {
-  const parts = token.split('.');
-  const payload = JSON.parse(atob(parts[1]));
-  const userId = payload.sub;
+  const userId = currentUser.sub;
   const env = Astro.locals.runtime.env as any;
   
   const dbUser = await env.DB.prepare('SELECT name, email, avatar_url FROM users WHERE id = ?').bind(userId).first();
@@ -27,11 +25,11 @@ try {
 <SocialLayout title="Settings">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" />
   
-  <div class="bg-white rounded-xl shadow-sm p-8">
-    <h2 class="text-2xl font-bold mb-6">Settings</h2>
+  <div class="bg-white dark:bg-[#242526] rounded-xl shadow-sm p-8">
+    <h2 class="text-2xl font-bold mb-6 text-gray-900 dark:text-[#e4e6eb]">Settings</h2>
     
-    <div class="mb-8 pb-8 border-b border-gray-200 last:border-0 last:pb-0 last:mb-0">
-        <h3 class="mt-0 mb-4 text-gray-900 font-semibold text-lg">Profile</h3>
+    <div class="mb-8 pb-8 border-b border-gray-200 dark:border-[#393a3b] last:border-0 last:pb-0 last:mb-0">
+        <h3 class="mt-0 mb-4 text-gray-900 dark:text-[#e4e6eb] font-semibold text-lg">Profile</h3>
         <div class="flex flex-col gap-6">
             <div class="flex items-center gap-4">
                 <div class="relative group">
@@ -39,43 +37,43 @@ try {
                         src={user.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}&background=random`} 
                         alt="Profile" 
                         id="current-avatar"
-                        class="w-20 h-20 rounded-full object-cover border-2 border-gray-100"
+                        class="w-20 h-20 rounded-full object-cover border-2 border-gray-100 dark:border-[#393a3b]"
                     />
                     <button 
                         id="change-avatar-btn"
-                        class="absolute bottom-0 right-0 bg-white rounded-full p-1.5 shadow-md border border-gray-200 cursor-pointer hover:bg-gray-50"
+                        class="absolute bottom-0 right-0 bg-white dark:bg-[#3a3b3c] rounded-full p-1.5 shadow-md border border-gray-200 dark:border-[#393a3b] cursor-pointer hover:bg-gray-50 dark:hover:bg-[#4e4f50]"
                         title="Change Photo"
                     >
                         📷
                     </button>
                 </div>
                 <div>
-                    <h4 class="m-0 text-lg font-medium">{user.name}</h4>
-                    <p class="m-0 text-gray-500 text-sm">Update your photo and personal details</p>
+                    <h4 class="m-0 text-lg font-medium text-gray-900 dark:text-[#e4e6eb]">{user.name}</h4>
+                    <p class="m-0 text-gray-500 dark:text-[#b0b3b8] text-sm">Update your photo and personal details</p>
                 </div>
             </div>
 
             <div class="flex flex-col gap-2">
-                <label for="profile-name" class="font-medium text-gray-600">Name</label>
-                <input type="text" id="profile-name" class="p-2 rounded border border-gray-300" value={user.name} placeholder="Your Name">
+                <label for="profile-name" class="font-medium text-gray-600 dark:text-[#b0b3b8]">Name</label>
+                <input type="text" id="profile-name" class="p-2 rounded border border-gray-300 dark:border-[#393a3b] bg-white dark:bg-[#3a3b3c] text-gray-900 dark:text-[#e4e6eb]" value={user.name} placeholder="Your Name">
             </div>
             <div class="flex flex-col gap-2">
-                <label for="profile-email" class="font-medium text-gray-600">Email</label>
-                <input type="email" id="profile-email" class="p-2 rounded border border-gray-300 bg-gray-50" value={user.email} disabled>
-                <span class="text-xs text-gray-500">Email cannot be changed</span>
+                <label for="profile-email" class="font-medium text-gray-600 dark:text-[#b0b3b8]">Email</label>
+                <input type="email" id="profile-email" class="p-2 rounded border border-gray-300 dark:border-[#393a3b] bg-gray-50 dark:bg-[#3a3b3c] text-gray-500 dark:text-[#b0b3b8]" value={user.email} disabled>
+                <span class="text-xs text-gray-500 dark:text-[#b0b3b8]">Email cannot be changed</span>
             </div>
         </div>
     </div>
 
     <!-- Crop Modal -->
     <div id="crop-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
-        <div class="bg-white p-6 rounded-xl max-w-lg w-full mx-4">
-            <h3 class="text-lg font-bold mb-4">Crop Profile Picture</h3>
-            <div class="max-h-[400px] overflow-hidden mb-4 bg-gray-100 rounded">
+        <div class="bg-white dark:bg-[#242526] p-6 rounded-xl max-w-lg w-full mx-4">
+            <h3 class="text-lg font-bold mb-4 text-gray-900 dark:text-[#e4e6eb]">Crop Profile Picture</h3>
+            <div class="max-h-[400px] overflow-hidden mb-4 bg-gray-100 dark:bg-[#3a3b3c] rounded">
                 <img id="crop-image" class="max-w-full" />
             </div>
             <div class="flex justify-end gap-3">
-                <button id="cancel-crop" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+                <button id="cancel-crop" class="px-4 py-2 text-gray-600 dark:text-[#b0b3b8] hover:bg-gray-100 dark:hover:bg-[#3a3b3c] rounded-lg">Cancel</button>
                 <button id="save-crop" class="px-4 py-2 bg-accent text-white rounded-lg hover:bg-[#0062cc]">Save Photo</button>
             </div>
         </div>
@@ -83,13 +81,11 @@ try {
     
     <input type="file" id="avatar-input" accept="image/*" class="hidden" />
 
-    <div class="mb-8 pb-8 border-b border-gray-200 last:border-0 last:pb-0 last:mb-0">
-
-    <div class="mb-8 pb-8 border-b border-gray-200 last:border-0 last:pb-0 last:mb-0">
-        <h3 class="mt-0 mb-4 text-gray-900 font-semibold text-lg">Appearance</h3>
+    <div class="mb-8 pb-8 border-b border-gray-200 dark:border-[#393a3b] last:border-0 last:pb-0 last:mb-0">
+        <h3 class="mt-0 mb-4 text-gray-900 dark:text-[#e4e6eb] font-semibold text-lg">Appearance</h3>
         <div class="flex justify-between items-center mb-4">
-            <label for="theme" class="font-medium text-gray-600">Theme</label>
-            <select id="theme" class="p-2 rounded border border-gray-300 bg-white">
+            <label for="theme" class="font-medium text-gray-600 dark:text-[#b0b3b8]">Theme</label>
+            <select id="theme" class="p-2 rounded border border-gray-300 dark:border-[#393a3b] bg-white dark:bg-[#3a3b3c] text-gray-900 dark:text-[#e4e6eb]">
                 <option value="light">Light</option>
                 <option value="dark">Dark</option>
                 <option value="system">System Default</option>
@@ -97,11 +93,11 @@ try {
         </div>
     </div>
 
-    <div class="mb-8 pb-8 border-b border-gray-200 last:border-0 last:pb-0 last:mb-0">
-        <h3 class="mt-0 mb-4 text-gray-900 font-semibold text-lg">Notifications</h3>
+    <div class="mb-8 pb-8 border-b border-gray-200 dark:border-[#393a3b] last:border-0 last:pb-0 last:mb-0">
+        <h3 class="mt-0 mb-4 text-gray-900 dark:text-[#e4e6eb] font-semibold text-lg">Notifications</h3>
         <div class="flex justify-between items-center mb-4">
-            <label for="notifications" class="font-medium text-gray-600">Enable Notifications (WIP)</label>
-            <input type="checkbox" id="notifications" class="p-2 rounded border border-gray-300">
+            <label for="notifications" class="font-medium text-gray-600 dark:text-[#b0b3b8]">Enable Notifications (WIP)</label>
+            <input type="checkbox" id="notifications" class="p-2 rounded border border-gray-300 dark:border-[#393a3b] bg-white dark:bg-[#3a3b3c]">
         </div>
     </div>
 
@@ -118,7 +114,6 @@ try {
     </div> -->
 
     <button id="save-btn" class="w-full bg-accent text-white border-none py-3 px-8 rounded-lg cursor-pointer font-semibold transition-colors hover:bg-[#0062cc]">Save Changes</button>
-    <div id="status" class="mt-4 text-center text-sm"></div>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
@@ -219,6 +214,14 @@ try {
 
     // Load settings on page load
     async function loadSettings() {
+        // 1. Load from localStorage first (fast)
+        const cachedTheme = localStorage.getItem('theme');
+        const themeSelect = document.getElementById('theme') as HTMLSelectElement | null;
+        if (themeSelect && cachedTheme) {
+            themeSelect.value = cachedTheme;
+            applyTheme(cachedTheme);
+        }
+
         const token = sessionStorage.getItem('accessToken');
         if (!token) return;
 
@@ -228,16 +231,21 @@ try {
             });
             if (res.ok) {
                 const settings = await res.json() as Settings;
-                const themeSelect = document.getElementById('theme') as HTMLSelectElement | null;
                 const notifCheck = document.getElementById('notifications') as HTMLInputElement | null;
                 const langSelect = document.getElementById('language') as HTMLSelectElement | null;
 
-                if (themeSelect) themeSelect.value = settings.theme || 'light';
+                if (themeSelect && settings.theme) {
+                    // Only update if different to avoid overwriting user's current session choice if they changed it before load finished?
+                    // Actually, server source of truth is usually better, but localStorage is faster.
+                    // Let's sync localStorage with server.
+                    if (settings.theme !== cachedTheme) {
+                        themeSelect.value = settings.theme;
+                        localStorage.setItem('theme', settings.theme);
+                        applyTheme(settings.theme);
+                    }
+                }
                 if (notifCheck) notifCheck.checked = !!settings.notifications_enabled;
                 if (langSelect) langSelect.value = settings.language || 'en';
-
-                // Apply theme immediately
-                if (settings.theme) applyTheme(settings.theme);
             }
         } catch (e) {
             console.error('Failed to load settings', e);
@@ -245,14 +253,12 @@ try {
     }
 
     function applyTheme(theme: string) {
-        if (theme === 'dark') {
-            document.documentElement.classList.add('dark-theme');
-            document.body.style.backgroundColor = '#1c1e21';
-            document.body.style.color = '#e4e6eb';
+        const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        
+        if (isDark) {
+            document.documentElement.classList.add('dark');
         } else {
-            document.documentElement.classList.remove('dark-theme');
-            document.body.style.backgroundColor = '';
-            document.body.style.color = '';
+            document.documentElement.classList.remove('dark');
         }
     }
 
@@ -265,10 +271,16 @@ try {
         const notifications_enabled = notifCheck?.checked || false;
         const language = langSelect?.value || 'en';
 
-        const statusEl = document.getElementById('status');
-        const token = sessionStorage.getItem('accessToken');
+        // Save to localStorage immediately
+        localStorage.setItem('theme', theme);
+        applyTheme(theme);
 
-        if (statusEl) statusEl.textContent = 'Saving...';
+        const btn = document.getElementById('save-btn') as HTMLButtonElement;
+        const originalText = btn.innerText;
+        btn.innerText = 'Saving...';
+        btn.disabled = true;
+
+        const token = sessionStorage.getItem('accessToken');
 
         try {
             const res = await fetch('/api/settings', {
@@ -281,19 +293,21 @@ try {
             });
 
             if (res.ok) {
-                if (statusEl) {
-                    statusEl.textContent = 'Settings saved successfully!';
-                    statusEl.className = 'mt-4 text-center text-sm text-green-600';
-                }
-                applyTheme(theme);
+                btn.innerText = 'Saved!';
+                setTimeout(() => {
+                    btn.innerText = originalText;
+                    btn.disabled = false;
+                }, 2000);
             } else {
                 throw new Error('Failed to save');
             }
         } catch (e) {
-            if (statusEl) {
-                statusEl.textContent = 'Error saving settings.';
-                statusEl.className = 'mt-4 text-center text-sm text-red-600';
-            }
+            console.error(e);
+            btn.innerText = 'Error Saving';
+            setTimeout(() => {
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }, 2000);
         }
     });
 

@@ -2,6 +2,30 @@
 import BaseHead from '../components/BaseHead.astro';
 
 const { title = 'Family Feed' } = Astro.props;
+
+// Get user info for avatar
+const token = Astro.cookies.get('accessToken')?.value;
+let avatarSrc = 'https://ui-avatars.com/api/?name=User&background=random';
+
+if (token) {
+  try {
+    const parts = token.split('.');
+    const payload = JSON.parse(atob(parts[1]));
+    const userId = payload.sub;
+    const env = Astro.locals.runtime?.env as any;
+    
+    if (env?.DB) {
+        const user = await env.DB.prepare('SELECT avatar_url, name FROM users WHERE id = ?').bind(userId).first();
+        if (user?.avatar_url) {
+            avatarSrc = user.avatar_url;
+        } else if (user?.name) {
+            avatarSrc = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random`;
+        }
+    }
+  } catch (e) {
+    // Ignore errors in layout
+  }
+}
 ---
 
 <!DOCTYPE html>
@@ -9,31 +33,44 @@ const { title = 'Family Feed' } = Astro.props;
 <head>
     <BaseHead title={title} description="Family Social Feed" />
 </head>
-<body class="bg-[#f0f2f5] text-[#1c1e21] m-0 font-sans">
-    <nav class="bg-white px-4 py-2 shadow-sm sticky top-0 z-50 flex justify-between items-center h-14 box-border">
+<body class="bg-[#f0f2f5] dark:bg-[#18191a] text-[#1c1e21] dark:text-[#e4e6eb] m-0 font-sans transition-colors duration-300">
+    <nav class="bg-white dark:bg-[#242526] px-4 py-2 shadow-sm sticky top-0 z-50 flex justify-between items-center h-14 box-border border-b dark:border-[#393a3b]">
         <a href="/" class="font-extrabold text-2xl text-[#667eea] no-underline">FamilyBlog</a>
-        <div class="bg-[#f0f2f5] px-4 py-2 rounded-full text-[#65676b] flex items-center gap-2 w-[300px] hidden md:flex">
+        <div class="bg-[#f0f2f5] dark:bg-[#3a3b3c] px-4 py-2 rounded-full text-[#65676b] dark:text-[#b0b3b8] flex items-center gap-2 w-[300px] hidden md:flex">
             <span>🔍</span> Search family...
         </div>
-        <div class="w-10 h-10 bg-[#ddd] rounded-full cursor-pointer"></div>
+        
+        <div class="relative group" id="user-menu-container">
+            <img 
+                src={avatarSrc} 
+                alt="Profile" 
+                class="w-10 h-10 rounded-full cursor-pointer object-cover border border-gray-200 dark:border-[#393a3b]"
+                id="user-menu-btn"
+            />
+            <!-- Dropdown -->
+            <div id="user-dropdown" class="hidden absolute right-0 top-12 w-48 bg-white dark:bg-[#242526] rounded-lg shadow-lg py-1 border border-gray-100 dark:border-[#393a3b] z-50">
+                <a href="/settings" class="block px-4 py-2 text-sm text-gray-700 dark:text-[#e4e6eb] hover:bg-gray-50 dark:hover:bg-[#3a3b3c] no-underline">Settings</a>
+                <button id="logout-btn" class="w-full text-left block px-4 py-2 text-sm text-red-600 hover:bg-gray-50 dark:hover:bg-[#3a3b3c] border-none bg-transparent cursor-pointer">Log Out</button>
+            </div>
+        </div>
     </nav>
 
     <div class="grid grid-cols-1 md:grid-cols-[60px_1fr] lg:grid-cols-[280px_1fr_280px] gap-8 max-w-[1200px] mx-auto my-8 px-4 items-start">
         <!-- Left Sidebar -->
         <aside class="sticky top-[5.5rem] hidden md:block">
-            <a href="/feed" class="flex items-center p-3 rounded-lg cursor-pointer transition-colors hover:bg-[#e4e6eb] font-semibold text-[#1c1e21] no-underline mb-1 justify-center lg:justify-start">
+            <a href="/feed" class="flex items-center p-3 rounded-lg cursor-pointer transition-colors hover:bg-[#e4e6eb] dark:hover:bg-[#3a3b3c] font-semibold text-[#1c1e21] dark:text-[#e4e6eb] no-underline mb-1 justify-center lg:justify-start">
                 <span class="text-2xl w-6 text-center lg:mr-4">🏠</span> <span class="hidden lg:inline">Home</span>
             </a>
-            <a href="/chat" class="flex items-center p-3 rounded-lg cursor-pointer transition-colors hover:bg-[#e4e6eb] font-semibold text-[#1c1e21] no-underline mb-1 justify-center lg:justify-start">
+            <a href="/chat" class="flex items-center p-3 rounded-lg cursor-pointer transition-colors hover:bg-[#e4e6eb] dark:hover:bg-[#3a3b3c] font-semibold text-[#1c1e21] dark:text-[#e4e6eb] no-underline mb-1 justify-center lg:justify-start">
                 <span class="text-2xl w-6 text-center lg:mr-4">💬</span> <span class="hidden lg:inline">Chat</span>
             </a>
-            <a href="/members" class="flex items-center p-3 rounded-lg cursor-pointer transition-colors hover:bg-[#e4e6eb] font-semibold text-[#1c1e21] no-underline mb-1 justify-center lg:justify-start">
+            <a href="/members" class="flex items-center p-3 rounded-lg cursor-pointer transition-colors hover:bg-[#e4e6eb] dark:hover:bg-[#3a3b3c] font-semibold text-[#1c1e21] dark:text-[#e4e6eb] no-underline mb-1 justify-center lg:justify-start">
                 <span class="text-2xl w-6 text-center lg:mr-4">👥</span> <span class="hidden lg:inline">Members</span>
             </a>
-            <a href="/photos" class="flex items-center p-3 rounded-lg cursor-pointer transition-colors hover:bg-[#e4e6eb] font-semibold text-[#1c1e21] no-underline mb-1 justify-center lg:justify-start">
+            <a href="/photos" class="flex items-center p-3 rounded-lg cursor-pointer transition-colors hover:bg-[#e4e6eb] dark:hover:bg-[#3a3b3c] font-semibold text-[#1c1e21] dark:text-[#e4e6eb] no-underline mb-1 justify-center lg:justify-start">
                 <span class="text-2xl w-6 text-center lg:mr-4">📸</span> <span class="hidden lg:inline">Photos</span>
             </a>
-            <a href="/settings" class="flex items-center p-3 rounded-lg cursor-pointer transition-colors hover:bg-[#e4e6eb] font-semibold text-[#1c1e21] no-underline mb-1 justify-center lg:justify-start">
+            <a href="/settings" class="flex items-center p-3 rounded-lg cursor-pointer transition-colors hover:bg-[#e4e6eb] dark:hover:bg-[#3a3b3c] font-semibold text-[#1c1e21] dark:text-[#e4e6eb] no-underline mb-1 justify-center lg:justify-start">
                 <span class="text-2xl w-6 text-center lg:mr-4">⚙️</span> <span class="hidden lg:inline">Settings</span>
             </a>
         </aside>
@@ -42,19 +79,19 @@ const { title = 'Family Feed' } = Astro.props;
         <main class="flex flex-col gap-4 min-w-0">
             <!-- Mobile Navigation -->
             <div class="flex justify-between md:hidden overflow-x-auto mb-2">
-                <a href="/feed" class="flex items-center justify-center p-3 min-w-[50px] text-[#1c1e21] no-underline hover:bg-[#e4e6eb] rounded-lg">
+                <a href="/feed" class="flex items-center justify-center p-3 min-w-[50px] text-[#1c1e21] dark:text-[#e4e6eb] no-underline hover:bg-[#e4e6eb] dark:hover:bg-[#3a3b3c] rounded-lg">
                     <span class="text-2xl">🏠</span>
                 </a>
-                <a href="/chat" class="flex items-center justify-center p-3 min-w-[50px] text-[#1c1e21] no-underline hover:bg-[#e4e6eb] rounded-lg">
+                <a href="/chat" class="flex items-center justify-center p-3 min-w-[50px] text-[#1c1e21] dark:text-[#e4e6eb] no-underline hover:bg-[#e4e6eb] dark:hover:bg-[#3a3b3c] rounded-lg">
                     <span class="text-2xl">💬</span>
                 </a>
-                <a href="/members" class="flex items-center justify-center p-3 min-w-[50px] text-[#1c1e21] no-underline hover:bg-[#e4e6eb] rounded-lg">
+                <a href="/members" class="flex items-center justify-center p-3 min-w-[50px] text-[#1c1e21] dark:text-[#e4e6eb] no-underline hover:bg-[#e4e6eb] dark:hover:bg-[#3a3b3c] rounded-lg">
                     <span class="text-2xl">👥</span>
                 </a>
-                <a href="/photos" class="flex items-center justify-center p-3 min-w-[50px] text-[#1c1e21] no-underline hover:bg-[#e4e6eb] rounded-lg">
+                <a href="/photos" class="flex items-center justify-center p-3 min-w-[50px] text-[#1c1e21] dark:text-[#e4e6eb] no-underline hover:bg-[#e4e6eb] dark:hover:bg-[#3a3b3c] rounded-lg">
                     <span class="text-2xl">📸</span>
                 </a>
-                <a href="/settings" class="flex items-center justify-center p-3 min-w-[50px] text-[#1c1e21] no-underline hover:bg-[#e4e6eb] rounded-lg">
+                <a href="/settings" class="flex items-center justify-center p-3 min-w-[50px] text-[#1c1e21] dark:text-[#e4e6eb] no-underline hover:bg-[#e4e6eb] dark:hover:bg-[#3a3b3c] rounded-lg">
                     <span class="text-2xl">⚙️</span>
                 </a>
             </div>
@@ -63,18 +100,18 @@ const { title = 'Family Feed' } = Astro.props;
 
         <!-- Right Sidebar -->
         <aside class="sticky top-[5.5rem] hidden lg:block">
-            <div class="bg-white rounded-lg p-4 mb-4 shadow-sm">
-                <h3 class="text-base text-[#65676b] mt-0 mb-4">Birthdays</h3>
+            <div class="bg-white dark:bg-[#242526] rounded-lg p-4 mb-4 shadow-sm">
+                <h3 class="text-base text-[#65676b] dark:text-[#b0b3b8] mt-0 mb-4">Birthdays</h3>
                 <p>🎂 <strong>Uncle Bob</strong>'s birthday is tomorrow!</p>
             </div>
-            <div class="bg-white rounded-lg p-4 mb-4 shadow-sm">
-                <h3 class="text-base text-[#65676b] mt-0 mb-4">Online Family</h3>
-                <div class="flex items-center mb-2 p-1 rounded cursor-pointer hover:bg-[#f0f2f5]">
+            <div class="bg-white dark:bg-[#242526] rounded-lg p-4 mb-4 shadow-sm">
+                <h3 class="text-base text-[#65676b] dark:text-[#b0b3b8] mt-0 mb-4">Online Family</h3>
+                <div class="flex items-center mb-2 p-1 rounded cursor-pointer hover:bg-[#f0f2f5] dark:hover:bg-[#3a3b3c]">
                     <div class="w-[30px] h-[30px] bg-[#ddd] rounded-full mr-2"></div>
                     <span>Sarah</span>
                     <div class="w-2 h-2 bg-[#31a24c] rounded-full ml-auto"></div>
                 </div>
-                <div class="flex items-center mb-2 p-1 rounded cursor-pointer hover:bg-[#f0f2f5]">
+                <div class="flex items-center mb-2 p-1 rounded cursor-pointer hover:bg-[#f0f2f5] dark:hover:bg-[#3a3b3c]">
                     <div class="w-[30px] h-[30px] bg-[#ddd] rounded-full mr-2"></div>
                     <span>Mom</span>
                     <div class="w-2 h-2 bg-[#31a24c] rounded-full ml-auto"></div>
@@ -82,5 +119,34 @@ const { title = 'Family Feed' } = Astro.props;
             </div>
         </aside>
     </div>
+
+    <script>
+        const menuBtn = document.getElementById('user-menu-btn');
+        const dropdown = document.getElementById('user-dropdown');
+        const logoutBtn = document.getElementById('logout-btn');
+
+        // Toggle dropdown
+        menuBtn?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdown?.classList.toggle('hidden');
+        });
+
+        // Close when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!dropdown?.contains(e.target as Node) && !menuBtn?.contains(e.target as Node)) {
+                dropdown?.classList.add('hidden');
+            }
+        });
+
+        // Logout
+        logoutBtn?.addEventListener('click', async () => {
+            try {
+                await fetch('/api/auth/logout', { method: 'POST' });
+                window.location.href = '/login';
+            } catch (e) {
+                console.error('Logout failed', e);
+            }
+        });
+    </script>
 </body>
 </html>

@@ -101,6 +101,13 @@ describe('Integration Flow', () => {
     const token = loginData.accessToken;
     expect(token).toBeDefined();
 
+    // Update locals with authenticated user (simulating middleware)
+    mockLocals.user = {
+        sub: loginData.user.id,
+        email: loginData.user.email,
+        name: loginData.user.name
+    };
+
     // 2. Create Post
     const postReq = new Request('http://localhost/api/posts', {
       method: 'POST',

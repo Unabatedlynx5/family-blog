@@ -8,8 +8,8 @@ import '../worker-exports.js';
 export const prerender = false;
 
 // Check if user is authenticated
-const token = Astro.cookies.get('accessToken')?.value;
-const isAuthenticated = !!token;
+const user = Astro.locals.user;
+const isAuthenticated = !!user;
 
 // If authenticated, redirect to feed
 if (isAuthenticated) {

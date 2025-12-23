@@ -44,8 +44,8 @@ if (!post) {
 }
 
 // Check authentication
-const token = Astro.cookies.get('accessToken')?.value;
-if (!token) {
+const user = Astro.locals.user;
+if (!user) {
   return Astro.redirect('/login');
 }
 
