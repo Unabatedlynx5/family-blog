@@ -9,12 +9,12 @@ if (!currentUser) {
   return Astro.redirect('/login');
 }
 
-let user = { name: '', email: '', avatar_url: '' };
+let user = { name: '', email: '', avatar_url: '', birthday: '' };
 try {
   const userId = currentUser.sub;
   const env = Astro.locals.runtime.env as any;
   
-  const dbUser = await env.DB.prepare('SELECT name, email, avatar_url FROM users WHERE id = ?').bind(userId).first();
+  const dbUser = await env.DB.prepare('SELECT name, email, avatar_url, birthday FROM users WHERE id = ?').bind(userId).first();
   if (dbUser) {
     user = dbUser;
   }
@@ -56,6 +56,10 @@ try {
             <div class="flex flex-col gap-2">
                 <label for="profile-name" class="font-medium text-gray-600 dark:text-[#b0b3b8]">Name</label>
                 <input type="text" id="profile-name" class="p-2 rounded border border-gray-300 dark:border-[#393a3b] bg-white dark:bg-[#3a3b3c] text-gray-900 dark:text-[#e4e6eb]" value={user.name} placeholder="Your Name">
+            </div>
+            <div class="flex flex-col gap-2">
+                <label for="profile-birthday" class="font-medium text-gray-600 dark:text-[#b0b3b8]">Birthday</label>
+                <input type="date" id="profile-birthday" class="p-2 rounded border border-gray-300 dark:border-[#393a3b] bg-white dark:bg-[#3a3b3c] text-gray-900 dark:text-[#e4e6eb]" value={user.birthday}>
             </div>
             <div class="flex flex-col gap-2">
                 <label for="profile-email" class="font-medium text-gray-600 dark:text-[#b0b3b8]">Email</label>
@@ -269,10 +273,14 @@ try {
         const themeSelect = document.getElementById('theme') as HTMLSelectElement | null;
         const notifCheck = document.getElementById('notifications') as HTMLInputElement | null;
         const langSelect = document.getElementById('language') as HTMLSelectElement | null;
+        const nameInput = document.getElementById('profile-name') as HTMLInputElement | null;
+        const birthdayInput = document.getElementById('profile-birthday') as HTMLInputElement | null;
         
         const theme = themeSelect?.value || 'light';
         const notifications_enabled = notifCheck?.checked || false;
         const language = langSelect?.value || 'en';
+        const name = nameInput?.value;
+        const birthday = birthdayInput?.value;
 
         // Save to localStorage immediately
         localStorage.setItem('theme', theme);
@@ -286,7 +294,8 @@ try {
         const token = sessionStorage.getItem('accessToken');
 
         try {
-            const res = await fetch('/api/settings', {
+            // Save settings
+            const settingsRes = await fetch('/api/settings', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -295,7 +304,17 @@ try {
                 body: JSON.stringify({ theme, notifications_enabled, language })
             });
 
-            if (res.ok) {
+            // Save profile
+            const profileRes = await fetch('/api/user/profile', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ name, birthday })
+            });
+
+            if (settingsRes.ok && profileRes.ok) {
                 btn.innerText = 'Saved!';
                 setTimeout(() => {
                     btn.innerText = originalText;

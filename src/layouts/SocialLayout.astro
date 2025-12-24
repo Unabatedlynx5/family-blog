@@ -6,6 +6,7 @@ const { title = 'Family Feed' } = Astro.props;
 // Get user info for avatar
 const token = Astro.cookies.get('accessToken')?.value;
 let avatarSrc = 'https://ui-avatars.com/api/?name=User&background=random';
+let upcomingBirthdays: any[] = [];
 
 if (token) {
   try {
@@ -20,6 +21,36 @@ if (token) {
             avatarSrc = user.avatar_url;
         } else if (user?.name) {
             avatarSrc = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random`;
+        }
+
+        // Fetch upcoming birthdays (simple implementation: fetch all and filter in JS)
+        // In a real app with many users, use SQL date functions
+        const allUsers = await env.DB.prepare('SELECT name, birthday FROM users WHERE birthday IS NOT NULL').all();
+        if (allUsers?.results) {
+            const today = new Date();
+            const currentYear = today.getFullYear();
+            
+            upcomingBirthdays = allUsers.results.map((u: any) => {
+                const birthDate = new Date(u.birthday);
+                // Set year to current year to compare
+                const nextBirthday = new Date(currentYear, birthDate.getUTCMonth(), birthDate.getUTCDate());
+                
+                // If birthday has passed this year, move to next year
+                if (nextBirthday < today) {
+                    nextBirthday.setFullYear(currentYear + 1);
+                }
+                
+                const diffTime = nextBirthday.getTime() - today.getTime();
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                
+                return {
+                    name: u.name,
+                    daysUntil: diffDays,
+                    date: nextBirthday
+                };
+            })
+            .filter((u: any) => u.daysUntil >= 0 && u.daysUntil <= 14) // Next 2 weeks
+            .sort((a: any, b: any) => a.daysUntil - b.daysUntil);
         }
     }
   } catch (e) {
@@ -100,10 +131,16 @@ if (token) {
 
         <!-- Right Sidebar -->
         <aside class="sticky top-[5.5rem] hidden lg:block">
-            <div class="bg-white dark:bg-[#242526] rounded-lg p-4 mb-4 shadow-sm">
-                <h3 class="text-base text-[#65676b] dark:text-[#b0b3b8] mt-0 mb-4">Birthdays</h3>
-                <p>🎂 <strong>Uncle Bob</strong>'s birthday is tomorrow!</p>
-            </div>
+            {upcomingBirthdays.length > 0 && (
+                <div class="bg-white dark:bg-[#242526] rounded-lg p-4 mb-4 shadow-sm">
+                    <h3 class="text-base text-[#65676b] dark:text-[#b0b3b8] mt-0 mb-4">Birthdays</h3>
+                    {upcomingBirthdays.map((b: any) => (
+                        <p class="mb-2 last:mb-0">
+                            🎂 <strong>{b.name}</strong>'s birthday is {b.daysUntil === 0 ? 'today!' : b.daysUntil === 1 ? 'tomorrow!' : `in ${b.daysUntil} days.`}
+                        </p>
+                    ))}
+                </div>
+            )}
             <div class="bg-white dark:bg-[#242526] rounded-lg p-4 mb-4 shadow-sm">
                 <h3 class="text-base text-[#65676b] dark:text-[#b0b3b8] mt-0 mb-4">Online Family</h3>
                 <div class="flex items-center mb-2 p-1 rounded cursor-pointer hover:bg-[#f0f2f5] dark:hover:bg-[#3a3b3c]">
