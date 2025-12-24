@@ -65,7 +65,8 @@ export const GET: APIRoute = async ({ locals, url }) => {
         p.created_at,
         p.media_refs,
         u.name,
-        u.email
+        u.email,
+        u.avatar_url
       FROM posts p
       LEFT JOIN users u ON p.user_id = u.id
       ORDER BY p.created_at DESC

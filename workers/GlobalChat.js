@@ -23,6 +23,14 @@ export class GlobalChat {
     // Use Hibernation API
     this.state.acceptWebSocket(server);
     
+    // Attach user info
+    server.serializeAttachment({
+      userId: request.headers.get('X-User-ID'),
+      email: request.headers.get('X-User-Email'),
+      name: request.headers.get('X-User-Name'),
+      avatar: request.headers.get('X-User-Avatar')
+    });
+    
     // History is now fetched from D1 via API, so we don't send it here.
     
     return new Response(null, { status: 101, webSocket: client });
@@ -36,11 +44,14 @@ export class GlobalChat {
           return;
       }
 
+      const attachment = ws.deserializeAttachment();
+
       const msg = {
         id: crypto.randomUUID(),
-        user: data.user || 'Anonymous',
-        user_id: data.userId || 'anon',
-        user_email: data.email || null,
+        user: attachment?.name || data.user || 'Anonymous',
+        user_id: attachment?.userId || data.userId || 'anon',
+        user_email: attachment?.email || data.email || null,
+        avatar_url: attachment?.avatar || null,
         text: data.text || '',
         created_at: Date.now()
       };

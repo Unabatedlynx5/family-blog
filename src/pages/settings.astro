@@ -194,7 +194,10 @@ try {
                 if (res.ok) {
                     const data = await res.json() as { avatar_url: string };
                     const img = document.getElementById('current-avatar') as HTMLImageElement;
-                    if (img) img.src = data.avatar_url;
+                    if (img) {
+                        // Append timestamp to bust cache since URL might be the same
+                        img.src = `${data.avatar_url}?t=${new Date().getTime()}`;
+                    }
                     
                     cropModal?.classList.add('hidden');
                     cropModal?.classList.remove('flex');

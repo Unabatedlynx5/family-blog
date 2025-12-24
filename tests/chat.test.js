@@ -22,12 +22,21 @@ class MockWebSocket {
     this.listeners = {};
     this.sentMessages = [];
     this.readyState = 1; // OPEN
+    this.attachment = null;
   }
 
   accept() {}
 
   send(data) {
     this.sentMessages.push(data);
+  }
+
+  serializeAttachment(data) {
+    this.attachment = data;
+  }
+
+  deserializeAttachment() {
+    return this.attachment;
   }
 
   addEventListener(event, callback) {

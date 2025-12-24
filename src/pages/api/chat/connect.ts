@@ -18,6 +18,17 @@ export const GET: APIRoute = async ({ request, locals }) => {
   const newRequest = new Request(request);
   newRequest.headers.set('X-User-ID', locals.user.sub);
   newRequest.headers.set('X-User-Email', locals.user.email);
+  newRequest.headers.set('X-User-Name', locals.user.name);
+
+  // Fetch avatar
+  try {
+    const dbUser = await env.DB.prepare('SELECT avatar_url FROM users WHERE id = ?').bind(locals.user.sub).first();
+    if (dbUser?.avatar_url) {
+      newRequest.headers.set('X-User-Avatar', dbUser.avatar_url);
+    }
+  } catch (e) {
+    console.error('Error fetching avatar for chat connect', e);
+  }
   
   return obj.fetch(newRequest);
 };
