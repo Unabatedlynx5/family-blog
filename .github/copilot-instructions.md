@@ -43,6 +43,11 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to be product
   - Worker/Durable Object logic: [workers/GlobalChat.js](workers/GlobalChat.js)
   - Database issues: `migrations/` SQL and code that calls D1 in `src/pages/api/*`.
 
+- **Git & PR Workflow**:
+  - **Branching**: Create a new branch for changes using the format `feature/<feature-name>`.
+  - **Pull Requests**: Automatically create a PR into `main` for these branches.
+  - **PR Summary**: Include a summary of files changed and features added in the PR description/comments.
+
 - **Current Focus & Todo**:
   - [ ] Improve test coverage for chat Durable Object (especially edge cases).
   - [ ] Improve test coverage for media upload and R2 interactions.
