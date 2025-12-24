@@ -7,11 +7,11 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to be product
 - **Auth pattern**: JWT access tokens (15m) + refresh tokens with rotation (30d). Refresh tokens are hashed (SHA-256). Admin-only creation uses the `x-admin-key` header handled by `src/pages/api/admin/users.ts`.
 
 - **Key entry points & examples**:
-  - API auth: [src/pages/api/auth/login.ts](src/pages/api/auth/login.ts)
-  - Refresh/logout: [src/pages/api/auth/refresh.ts](src/pages/api/auth/refresh.ts) and [src/pages/api/auth/logout.ts](src/pages/api/auth/logout.ts)
-  - Media upload: [src/pages/api/media/upload.ts](src/pages/api/media/upload.ts)
-  - WebSocket connect (Durable Object): [src/pages/api/chat/connect.ts](src/pages/api/chat/connect.ts) and [workers/GlobalChat.js](workers/GlobalChat.js)
-  - Feed/posts API: [src/pages/api/feed.ts](src/pages/api/feed.ts), [src/pages/api/posts/index.ts](src/pages/api/posts/index.ts)
+  - API auth: [src/pages/api/auth/login.ts](../src/pages/api/auth/login.ts)
+  - Refresh/logout: [src/pages/api/auth/refresh.ts](../src/pages/api/auth/refresh.ts) and [src/pages/api/auth/logout.ts](../src/pages/api/auth/logout.ts)
+  - Media upload: [src/pages/api/media/upload.ts](../src/pages/api/media/upload.ts)
+  - WebSocket connect (Durable Object): [src/pages/api/chat/connect.ts](../src/pages/api/chat/connect.ts) and [workers/GlobalChat.js](../workers/GlobalChat.js)
+  - Feed/posts API: [src/pages/api/feed.ts](../src/pages/api/feed.ts), [src/pages/api/posts/index.ts](../src/pages/api/posts/index.ts)
 
 - **Developer workflows**:
   - Install: `npm install`
@@ -40,7 +40,7 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to be product
 
 - **Where to look first when debugging**:
   - Local dev: `npm run dev` (Astro) — console shows serverless function errors.
-  - Worker/Durable Object logic: [workers/GlobalChat.js](workers/GlobalChat.js)
+  - Worker/Durable Object logic: [workers/GlobalChat.js](../workers/GlobalChat.js)
   - Database issues: `migrations/` SQL and code that calls D1 in `src/pages/api/*`.
 
 - **Git & PR Workflow**:
@@ -49,12 +49,28 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to be product
   - **PR Summary**: Include a summary of files changed and features added in the PR description/comments.
 
 - **Current Focus & Todo**:
+  - [ ] Implement password reset flow (email + token).
+  - [ ] Add rate limiting to auth endpoints to mitigate brute-force attacks.
+  - [ ] Improve error handling and logging for Durable Object connections.
   - [ ] Improve test coverage for chat Durable Object (especially edge cases).
   - [ ] Improve test coverage for media upload and R2 interactions.
   - [ ] Add end-to-end tests for key user flows (auth, posting, chat).
-  - [ ] Add a toolbar for editing blog posts and make a user friendly way to add markdown content.
-  - [ ] 
+  - [ ] Add "signing in..." after the user submits login form.
+  - [ ] Add user profile pictures stored in R2 and displayed in chat and comments.
+  - [ ] Add birthday to settings, and correctly update birthday on social layout.
+  - [ ] Implement user presence indicators in chat (online/offline).
+    - [ ] Implement online status indicators.
+  - [ ] Add a toolbar for editing blog posts and make a user friendly way to add markdown content. (i.e. bold, underline, headings, links, images, etc.)
+  - [ ] Implement astro mdx features for blog posts (like syntax highlighting).
+  - [ ] Add comment functionality to blog posts.
+    - [ ] Add liking functionality to chat messages and comments.
+  - [ ] Add pagination to feed/posts API endpoints.
+  - [ ] Optimize D1 queries and add indexes where needed.
+  - [ ] Implement caching for frequently accessed data (e.g., blog posts).
+  - [ ] Add blog button to social layout for easy access. 
+  - [ ] Add recipe button for recipe content in the future.
 
-References: README ([README.md](README.md)), test guide ([tests/README.md](tests/README.md)), `package.json` scripts ([package.json](package.json)).
+
+References: README ([README.md](../README.md)), test guide ([tests/README.md](../tests/README.md)), `package.json` scripts ([package.json](../package.json)).
 
 If anything is unclear or you'd like more detail (examples of request/response shapes or typical test mocks), tell me which part to expand. 
