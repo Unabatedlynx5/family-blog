@@ -57,7 +57,7 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to be product
   - [x] Add end-to-end tests for key user flows (auth, posting, chat).
   - [x] Add "signing in..." after the user submits login form.
   - [x] Add user profile pictures stored in R2 and displayed in chat and comments.
-  - [ ] Add birthday to settings, and correctly update birthday on social layout.
+  - [x] Add birthday to settings, and correctly update birthday on social layout.
   - [ ] Implement user presence indicators in chat (online/offline).
     - [ ] Implement online status indicators.
   - [ ] Add a toolbar for editing blog posts and make a user friendly way to add markdown content. (i.e. bold, underline, headings, links, images, etc.)
