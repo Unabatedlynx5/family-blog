@@ -49,14 +49,14 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to be product
   - **PR Summary**: Include a summary of files changed and features added in the PR description/comments.
 
 - **Current Focus & Todo**:
-  - [ ] Implement password reset flow (email + token).
+  - [x] Implement password reset flow (email + token).
   - [ ] Add rate limiting to auth endpoints to mitigate brute-force attacks.
-  - [ ] Improve error handling and logging for Durable Object connections.
-  - [ ] Improve test coverage for chat Durable Object (especially edge cases).
-  - [ ] Improve test coverage for media upload and R2 interactions.
-  - [ ] Add end-to-end tests for key user flows (auth, posting, chat).
-  - [ ] Add "signing in..." after the user submits login form.
-  - [ ] Add user profile pictures stored in R2 and displayed in chat and comments.
+  - [x] Improve error handling and logging for Durable Object connections.
+  - [x] Improve test coverage for chat Durable Object (especially edge cases).
+  - [x] Improve test coverage for media upload and R2 interactions.
+  - [x] Add end-to-end tests for key user flows (auth, posting, chat).
+  - [x] Add "signing in..." after the user submits login form.
+  - [x] Add user profile pictures stored in R2 and displayed in chat and comments.
   - [ ] Add birthday to settings, and correctly update birthday on social layout.
   - [ ] Implement user presence indicators in chat (online/offline).
     - [ ] Implement online status indicators.

@@ -57,9 +57,11 @@ if (!user) {
             year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
         }) : '';
 
+        const avatarUrl = p.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name || 'User')}&background=random`;
+
         el.innerHTML = `
           <div class="flex items-center mb-3">
-            <div class="w-10 h-10 bg-[#ddd] rounded-full mr-3"></div>
+            <img src="${avatarUrl}" class="w-10 h-10 rounded-full mr-3 object-cover border border-gray-200 dark:border-gray-700" alt="${p.name}" />
             <div>
               <div class="font-bold text-[#1c1e21] dark:text-[#e4e6eb]">${p.name || p.user_id || (p.source==='markdown'? 'System' : 'Anonymous')}</div>
               <div class="text-xs text-[#65676b] dark:text-[#b0b3b8]">${dateStr}</div>

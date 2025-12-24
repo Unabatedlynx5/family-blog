@@ -111,23 +111,22 @@ if (!user) {
         // Check both user_id (from server) and userId (from session)
         const isOwn = msg.user_id === userId;
         
-        // Tailwind classes for message bubbles
-        // iMessage style:
-        // Own: bg-blue-500 text-white rounded-2xl rounded-br-none ml-auto max-w-[70%]
-        // Others: bg-gray-200 text-black rounded-2xl rounded-bl-none mr-auto max-w-[70%]
-        
-        div.className = `flex flex-col ${isOwn ? 'items-end' : 'items-start'} mb-2`;
+        div.className = `flex ${isOwn ? 'flex-row-reverse' : 'flex-row'} items-end gap-2 mb-4`;
         
         const displayName = msg.user || msg.user_id || 'Anon';
+        const avatarUrl = msg.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=random`;
         
         const bubbleClass = isOwn 
-            ? 'bg-[#007aff] dark:bg-[#0a84ff] text-white rounded-[18px] rounded-br-sm px-3 py-2 max-w-[75%] relative' 
-            : 'bg-[#e5e5ea] dark:bg-[#3a3b3c] text-black dark:text-[#e4e6eb] rounded-[18px] rounded-bl-sm px-3 py-2 max-w-[75%] relative';
+            ? 'bg-[#007aff] dark:bg-[#0a84ff] text-white rounded-[18px] rounded-br-sm px-3 py-2 relative text-left' 
+            : 'bg-[#e5e5ea] dark:bg-[#3a3b3c] text-black dark:text-[#e4e6eb] rounded-[18px] rounded-bl-sm px-3 py-2 relative text-left';
 
         div.innerHTML = `
-          ${!isOwn ? `<div class="text-[10px] text-[#8e8e93] dark:text-[#b0b3b8] ml-3 mb-1">${displayName}</div>` : ''}
-          <div class="${bubbleClass}">
-            <div class="text-[15px] leading-snug break-words">${msg.text}</div>
+          <img src="${avatarUrl}" class="w-8 h-8 rounded-full object-cover mb-1 shadow-sm border border-black/5 dark:border-white/10 bg-gray-100 dark:bg-gray-800" alt="${displayName}" />
+          <div class="flex flex-col ${isOwn ? 'items-end' : 'items-start'} max-w-[70%]">
+             ${!isOwn ? `<div class="text-[11px] text-[#8e8e93] dark:text-[#b0b3b8] ml-1 mb-1">${displayName}</div>` : ''}
+             <div class="${bubbleClass}">
+               <div class="text-[15px] leading-snug break-words whitespace-pre-wrap">${msg.text}</div>
+             </div>
           </div>
         `;
         messagesContainer.appendChild(div);
@@ -138,20 +137,10 @@ if (!user) {
         if (!input) return;
         const text = input.value.trim();
         if (text && ws && ws.readyState === WebSocket.OPEN) {
-          // Get user info from session storage (set during login)
-          // If not set, we might need to fetch it or default to 'Anonymous'
-          // Ideally, the server should validate the user from the token, but for this simple chat
-          // we are passing it in the message for display.
-          // A more secure way: Authenticate the WebSocket connection with the token, 
-          // and let the server determine the user ID/Name.
-          // For now, let's send what we have.
-
+          // User info is now attached to the connection on the server side
           ws.send(JSON.stringify({ 
               type: 'message', 
-              text,
-              userId,
-              user: userName,
-              email: userEmail
+              text
           }));
           input.value = '';
         }
