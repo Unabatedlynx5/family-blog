@@ -179,4 +179,78 @@ describe('GlobalChat Durable Object Tests', () => {
     const res = await chat.fetch(req);
     expect(res.status).toBe(501);
   });
+
+  it('should handle invalid JSON messages gracefully', async () => {
+    const req = new Request('http://localhost/api/chat/connect', {
+      headers: { 'Upgrade': 'websocket' }
+    });
+    const res = await chat.fetch(req);
+    const ws = state.getWebSockets()[0];
+
+    // Simulate invalid JSON
+    await chat.webSocketMessage(ws, 'invalid-json');
+    
+    // Should not crash and not broadcast
+    expect(ws.sentMessages.length).toBe(0);
+  });
+
+  it('should ignore messages with wrong type', async () => {
+    const req = new Request('http://localhost/api/chat/connect', {
+      headers: { 'Upgrade': 'websocket' }
+    });
+    await chat.fetch(req);
+    const ws = state.getWebSockets()[0];
+
+    await chat.webSocketMessage(ws, JSON.stringify({ type: 'ping' }));
+    
+    // Should not broadcast
+    expect(ws.sentMessages.length).toBe(0);
+  });
+
+  it('should handle D1 errors gracefully', async () => {
+    const req = new Request('http://localhost/api/chat/connect', {
+      headers: { 'Upgrade': 'websocket' }
+    });
+    await chat.fetch(req);
+    const ws = state.getWebSockets()[0];
+
+    // Mock D1 error
+    mockDb.prepare.mockReturnValue({
+      bind: vi.fn().mockReturnValue({
+        run: vi.fn().mockRejectedValue(new Error('D1 Error'))
+      })
+    });
+
+    const msg = {
+      type: 'message',
+      user: 'Test User',
+      text: 'Hello'
+    };
+
+    // Should still broadcast even if DB fails
+    await chat.webSocketMessage(ws, JSON.stringify(msg));
+    expect(ws.sentMessages.length).toBe(1);
+  });
+
+  it('should handle WebSocket close', async () => {
+    const req = new Request('http://localhost/api/chat/connect', {
+      headers: { 'Upgrade': 'websocket' }
+    });
+    await chat.fetch(req);
+    const ws = state.getWebSockets()[0];
+
+    // Should not throw
+    await chat.webSocketClose(ws, 1000, 'Normal Closure', true);
+  });
+
+  it('should handle WebSocket error', async () => {
+    const req = new Request('http://localhost/api/chat/connect', {
+      headers: { 'Upgrade': 'websocket' }
+    });
+    await chat.fetch(req);
+    const ws = state.getWebSockets()[0];
+
+    // Should not throw
+    await chat.webSocketError(ws, new Error('Socket Error'));
+  });
 });

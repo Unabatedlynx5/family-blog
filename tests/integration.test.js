@@ -136,4 +136,44 @@ describe('Integration Flow', () => {
     expect(feedData.posts[0].content).toBe('Integration Test Post');
     expect(feedData.posts[0].name).toBe('Integration User');
   });
+
+  it('should handle full auth flow: login -> refresh -> logout', async () => {
+    const { POST: refresh } = await import('../src/pages/api/auth/refresh');
+    const { POST: logout } = await import('../src/pages/api/auth/logout');
+
+    // 1. Login
+    const loginReq = new Request('http://localhost/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'user@example.com', password: 'password123' })
+    });
+    
+    const cookieStore = new Map();
+    const cookies = {
+      set: (name, value) => cookieStore.set(name, value),
+      get: (name) => cookieStore.has(name) ? { value: cookieStore.get(name) } : undefined,
+      delete: (name) => cookieStore.delete(name)
+    };
+
+    const loginRes = await login({ request: loginReq, locals: mockLocals, cookies });
+    expect(loginRes.status).toBe(200);
+    expect(cookieStore.has('accessToken')).toBe(true);
+    expect(cookieStore.has('refresh')).toBe(true);
+
+    // 2. Refresh
+    const refreshReq = new Request('http://localhost/api/auth/refresh', { method: 'POST' });
+    const refreshRes = await refresh({ request: refreshReq, locals: mockLocals, cookies });
+    expect(refreshRes.status).toBe(200);
+    const refreshData = await refreshRes.json();
+    expect(refreshData.accessToken).toBeDefined();
+    // Should have rotated refresh token
+    expect(cookieStore.get('refresh')).toBeDefined();
+
+    // 3. Logout
+    const logoutReq = new Request('http://localhost/api/auth/logout', { method: 'POST' });
+    const logoutRes = await logout({ request: logoutReq, locals: mockLocals, cookies });
+    expect(logoutRes.status).toBe(200);
+    expect(cookieStore.has('accessToken')).toBe(false);
+    expect(cookieStore.has('refresh')).toBe(false);
+  });
 });

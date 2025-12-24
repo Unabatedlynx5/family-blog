@@ -11,14 +11,15 @@ export const GET: APIRoute = async ({ request, locals }) => {
   }
   
   // Proxy request to the Durable Object instance
-  const id = env.GLOBAL_CHAT.idFromName('GLOBAL_CHAT');
-  const obj = env.GLOBAL_CHAT.get(id);
-  
-  // Pass user info to DO
-  const newRequest = new Request(request);
-  newRequest.headers.set('X-User-ID', locals.user.sub);
-  newRequest.headers.set('X-User-Email', locals.user.email);
-  newRequest.headers.set('X-User-Name', locals.user.name);
+  try {
+    const id = env.GLOBAL_CHAT.idFromName('GLOBAL_CHAT');
+    const obj = env.GLOBAL_CHAT.get(id);
+    
+    // Pass user info to DO
+    const newRequest = new Request(request);
+    newRequest.headers.set('X-User-ID', locals.user.sub);
+    newRequest.headers.set('X-User-Email', locals.user.email);
+    newRequest.headers.set('X-User-Name', locals.user.name);
 
   // Fetch avatar
   try {
@@ -30,12 +31,21 @@ export const GET: APIRoute = async ({ request, locals }) => {
     console.error('Error fetching avatar for chat connect', e);
   }
   
-  return obj.fetch(newRequest);
+    return await obj.fetch(newRequest);
+  } catch (err) {
+    console.error('[Chat Connect] Failed to connect to Durable Object:', err);
+    return new Response('Failed to connect to chat server', { status: 502 });
+  }
 };
 
 export const DELETE: APIRoute = async ({ request, locals }) => {
   const env = locals.runtime.env as any;
-  const id = env.GLOBAL_CHAT.idFromName('GLOBAL_CHAT');
-  const obj = env.GLOBAL_CHAT.get(id);
-  return obj.fetch(request);
+  try {
+    const id = env.GLOBAL_CHAT.idFromName('GLOBAL_CHAT');
+    const obj = env.GLOBAL_CHAT.get(id);
+    return await obj.fetch(request);
+  } catch (err) {
+    console.error('[Chat Connect] Failed to delete:', err);
+    return new Response('Failed to connect to chat server', { status: 502 });
+  }
 };

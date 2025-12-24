@@ -172,4 +172,72 @@ describe('Media API Tests', () => {
     const res = await getMedia({ params: { id: 'non-existent' }, locals: mockLocals, request: req });
     expect(res.status).toBe(404);
   });
+
+  it('should reject unauthorized upload', async () => {
+    const req = new Request('http://localhost/api/media/upload', {
+      method: 'POST',
+      body: new FormData()
+    });
+    
+    // No user in locals
+    const res = await uploadMedia({ request: req, locals: { runtime: { env } }, cookies: { get: () => undefined } });
+    expect(res.status).toBe(401);
+  });
+
+  it('should reject upload with no file', async () => {
+    const formData = new FormData();
+    // No file appended
+
+    const req = new Request('http://localhost/api/media/upload', {
+      method: 'POST',
+      body: formData
+    });
+
+    const res = await uploadMedia({ request: req, locals: mockLocals, cookies: { get: () => undefined } });
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.error).toBe('No file provided');
+  });
+
+  it('should reject file too large', async () => {
+    // Mock request.formData() to return a file with large size
+    const req = new Request('http://localhost/api/media/upload', {
+      method: 'POST'
+    });
+
+    const mockFile = {
+      name: 'large.png',
+      type: 'image/png',
+      size: 5 * 1024 * 1024 + 1,
+      arrayBuffer: async () => new ArrayBuffer(0)
+    };
+
+    req.formData = async () => {
+      const map = new Map();
+      map.get = (key) => key === 'file' ? mockFile : null;
+      return map;
+    };
+
+    const res = await uploadMedia({ request: req, locals: mockLocals, cookies: { get: () => undefined } });
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.error).toContain('File too large');
+  });
+
+  it('should handle R2 upload failure', async () => {
+    const formData = new FormData();
+    const file = new File(['content'], 'test.png', { type: 'image/png' });
+    formData.append('file', file);
+
+    const req = new Request('http://localhost/api/media/upload', {
+      method: 'POST',
+      body: formData
+    });
+
+    // Mock R2 failure
+    env.MEDIA.put = vi.fn().mockRejectedValue(new Error('R2 Error'));
+
+    const res = await uploadMedia({ request: req, locals: mockLocals, cookies: { get: () => undefined } });
+    expect(res.status).toBe(500);
+  });
 });

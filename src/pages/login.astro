@@ -40,9 +40,15 @@ if (user) {
     <script type="module" is:inline>
       const form = document.getElementById('login-form');
       const status = document.getElementById('login-status');
+      const submitBtn = form.querySelector('button[type="submit"]');
+
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        status.textContent = '';
+        status.textContent = 'Signing in...';
+        status.className = 'mt-4 text-gray-600';
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Signing in...';
+
         const data = new FormData(form);
         const body = { email: data.get('email'), password: data.get('password') };
         try {
@@ -50,6 +56,9 @@ if (user) {
           const json = await res.json();
           if (!res.ok) {
             status.textContent = json.error || 'Login failed';
+            status.className = 'mt-4 text-red-600';
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Sign in';
             return;
           }
           // store access token in memory (simple) and redirect to feed
@@ -58,9 +67,14 @@ if (user) {
             if (json.user.id) sessionStorage.setItem('userId', json.user.id);
             if (json.user.name) sessionStorage.setItem('userName', json.user.name);
           }
+          status.textContent = 'Success! Redirecting...';
+          status.className = 'mt-4 text-green-600';
           window.location.href = '/feed';
         } catch (err) {
           status.textContent = 'Network error';
+          status.className = 'mt-4 text-red-600';
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Sign in';
         }
       });
     </script>
