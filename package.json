@@ -36,7 +36,7 @@
     "build": "astro build",
     "cf-typegen": "wrangler types",
     "check": "astro build && tsc && wrangler deploy --dry-run",
-    "deploy": "wrangler deploy -c wrangler.chat.json && wrangler deploy",
+    "deploy": "npm run build && wrangler deploy -c wrangler.chat.json && wrangler deploy",
     "dev": "node scripts/auto_seed.js && astro dev",
     "dev:chat": "wrangler dev -c wrangler.chat.json",
     "preview": "astro build && wrangler dev",
