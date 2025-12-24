@@ -4,211 +4,36 @@ import SocialLayout from '../layouts/SocialLayout.astro';
 export const prerender = false;
 
 // Check authentication
-const token = Astro.cookies.get('accessToken')?.value;
-if (!token) {
+const user = Astro.locals.user;
+if (!user) {
   return Astro.redirect('/login');
 }
 ---
 <SocialLayout title="Family Chat">
-    <style is:global>
-      .chat-container {
-        display: flex;
-        flex-direction: column;
-        height: calc(100vh - 140px); /* Adjust based on header/padding */
-        background: #ffffff;
-        border-radius: 1rem;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        overflow: hidden;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      }
-      .chat-header {
-        padding: 1rem 1.5rem;
-        background: rgba(245, 245, 247, 0.8);
-        backdrop-filter: blur(10px);
-        border-bottom: 1px solid rgba(0,0,0,0.1);
-        font-weight: 600;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        position: relative;
-        color: #000;
-      }
-      .chat-header span:first-child {
-          font-size: 1.1rem;
-      }
-      .chat-status {
-        font-size: 0.75rem;
-        color: #8e8e93;
-        position: absolute;
-        right: 1.5rem;
-      }
-      .chat-messages {
-        flex: 1;
-        overflow-y: auto;
-        padding: 1rem 1.5rem;
-        display: flex;
-        flex-direction: column;
-        gap: 0.25rem;
-        background: #ffffff;
-      }
-      .message {
-        display: flex;
-        flex-direction: column;
-        max-width: 75%;
-        padding: 0.6rem 1rem;
-        border-radius: 1.25rem;
-        position: relative;
-        font-size: 1rem;
-        line-height: 1.4;
-        margin-bottom: 0.25rem;
-        word-wrap: break-word;
-      }
-      .message.others {
-        align-self: flex-start;
-        background: #e9e9eb;
-        color: #000;
-        border-bottom-left-radius: 0.25rem;
-        margin-left: 0.5rem;
-      }
-      .message.own {
-        align-self: flex-end;
-        background: #007aff;
-        color: white;
-        border-bottom-right-radius: 0.25rem;
-        margin-right: 0.5rem;
-      }
-      /* Tail effect for messages */
-      .message.others::before {
-          content: "";
-          position: absolute;
-          bottom: 0;
-          left: -6px;
-          width: 10px;
-          height: 10px;
-          background: #e9e9eb;
-          border-bottom-right-radius: 10px;
-          z-index: 0;
-      }
-      .message.others::after {
-          content: "";
-          position: absolute;
-          bottom: 0;
-          left: -10px;
-          width: 10px;
-          height: 10px;
-          background: #ffffff; /* Match container background */
-          border-bottom-right-radius: 10px;
-          z-index: 1; /* Ensure it covers the tail */
-      }
-      .message.own::before {
-          content: "";
-          position: absolute;
-          bottom: 0;
-          right: -6px;
-          width: 10px;
-          height: 10px;
-          background: #007aff;
-          border-bottom-left-radius: 10px;
-          z-index: 0;
-      }
-      .message.own::after {
-          content: "";
-          position: absolute;
-          bottom: 0;
-          right: -10px;
-          width: 10px;
-          height: 10px;
-          background: #ffffff; /* Match container background */
-          border-bottom-left-radius: 10px;
-          z-index: 1; /* Ensure it covers the tail */
-      }
 
-      .message-author {
-        font-size: 0.7rem;
-        margin-bottom: 0.1rem;
-        color: #8e8e93;
-        margin-left: 0.5rem;
-        margin-top: -0.25rem;
-      }
-      .message.own .message-author {
-        display: none; 
-      }
-      .message-time {
-          display: none; /* Hide time by default, maybe show on hover or tap? */
-      }
-      
-      .chat-input-area {
-        padding: 0.75rem 1rem;
-        background: #f5f5f7;
-        border-top: 1px solid rgba(0,0,0,0.1);
-        display: flex;
-        gap: 0.75rem;
-        align-items: flex-end;
-      }
-      .chat-input-area textarea {
-        flex: 1;
-        padding: 0.5rem 1rem;
-        border: 1px solid #d1d1d6;
-        background: #ffffff;
-        border-radius: 1.25rem;
-        resize: none;
-        font-family: inherit;
-        max-height: 100px;
-        outline: none;
-        font-size: 1rem;
-        line-height: 1.4;
-      }
-      .chat-input-area textarea:focus {
-          border-color: #007aff;
-      }
-      .chat-input-area button {
-        background: #007aff;
-        border: none;
-        cursor: pointer;
-        color: white;
-        font-weight: 600;
-        padding: 0.5rem;
-        border-radius: 50%;
-        width: 32px;
-        height: 32px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-bottom: 2px;
-        transition: background 0.2s;
-      }
-      .chat-input-area button:hover {
-          background: #0062cc;
-      }
-      .chat-input-area button:disabled {
-          background: #d1d1d6;
-          cursor: default;
-      }
-      /* Arrow icon for send button */
-      .send-icon {
-          width: 16px;
-          height: 16px;
-          fill: white;
-          transform: translateX(1px); /* Optical alignment */
-      }
-    </style>
 
-    <div class="chat-container">
-      <div class="chat-header">
-        <span>Family</span>
-        <span id="connection-status" class="chat-status">Connecting...</span>
+    <div class="flex flex-col h-[calc(100vh-140px)] bg-white dark:bg-[#242526] rounded-2xl shadow-lg overflow-hidden font-sans">
+      <div class="px-6 py-4 bg-[#f5f5f7]/80 dark:bg-[#242526]/80 backdrop-blur-md border-b border-black/10 dark:border-white/10 font-semibold flex justify-center items-center relative text-black dark:text-white">
+        <span class="text-lg">Family Chat</span>
+        <span id="connection-status" class="text-xs text-[#8e8e93] dark:text-[#b0b3b8] absolute right-6">Connecting...</span>
       </div>
       
-      <div id="messages" class="chat-messages">
-        <!-- Messages will appear here -->
+      <div id="messages" class="flex-1 overflow-y-auto px-6 py-4 flex flex-col gap-2 bg-[#f5f5f7] dark:bg-[#1c1c1e]">
+        <!-- Messages will be injected here -->
       </div>
+      
+      <!-- Hidden config to pass server-side user data to client client script -->
+      <div id="chat-config" data-user-id={user.sub} data-user-name={user.name} data-user-email={user.email} style="display:none;"></div>
 
-      <div class="chat-input-area">
-        <textarea id="message-input" rows="1" placeholder="iMessage"></textarea>
-        <button id="send-btn">
-            <svg class="send-icon" viewBox="0 0 24 24">
-                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-            </svg>
+      <div class="p-4 bg-white dark:bg-[#242526] border-t border-black/10 dark:border-white/10 flex items-end gap-3">
+        <button class="p-2 rounded-full text-[#007aff] dark:text-[#0a84ff] bg-transparent border-none cursor-pointer hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+        </button>
+        <div class="flex-1 relative">
+            <textarea id="message-input" rows="1" placeholder="iMessage" class="w-full bg-white dark:bg-[#3a3b3c] border border-[#c6c6c8] dark:border-[#3e4042] rounded-2xl px-4 py-2 text-base leading-normal max-h-32 resize-none focus:outline-none focus:border-[#007aff] dark:focus:border-[#0a84ff] text-black dark:text-[#e4e6eb]"></textarea>
+        </div>
+        <button id="send-btn" class="p-2 rounded-full bg-[#007aff] dark:bg-[#0a84ff] text-white border-none cursor-pointer hover:bg-[#0063cc] dark:hover:bg-[#0071e3] transition-colors flex items-center justify-center w-9 h-9">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
         </button>
       </div>
     </div>
@@ -219,34 +44,46 @@ if (!token) {
       const host = window.location.host;
       const wsUrl = `${protocol}//${host}/api/chat/connect`;
       
-      let ws;
-      const messagesContainer = document.querySelector('.chat-messages');
-      const statusDiv = document.querySelector('.chat-status');
-      const input = document.querySelector('textarea');
-      const sendBtn = document.querySelector('button');
+      let ws: WebSocket;
+      const messagesContainer = document.getElementById('messages') as HTMLDivElement;
+      const statusDiv = document.getElementById('connection-status') as HTMLSpanElement;
+      const input = document.getElementById('message-input') as HTMLTextAreaElement;
+      const sendBtn = document.getElementById('send-btn') as HTMLButtonElement;
+      const config = document.getElementById('chat-config');
       
-      // Get user info from session storage or token
-      const token = sessionStorage.getItem('accessToken');
-      let userId = sessionStorage.getItem('userId');
-      
-      if (!userId && token) {
+      // Get user info from server-injected config
+      const userId = config?.dataset.userId || 'anon';
+      const userName = config?.dataset.userName || 'Anonymous';
+      const userEmail = config?.dataset.userEmail || '';
+
+      async function fetchHistory() {
         try {
-          const payload = JSON.parse(atob(token.split('.')[1]));
-          userId = payload.sub;
-        } catch (e) {}
+          const res = await fetch('/api/chat/messages');
+          if (res.ok) {
+            const data = await res.json() as { messages: any[] };
+            if (Array.isArray(data.messages)) {
+              messagesContainer.innerHTML = '';
+              data.messages.forEach(appendMessage);
+            }
+          }
+        } catch (e) {
+          console.error('Failed to fetch history', e);
+        }
       }
-      userId = userId || 'anon';
+
+      let retryDelay = 1000;
+      const maxDelay = 30000;
 
       function connect() {
-        statusDiv.textContent = 'Connecting...';
+        if (statusDiv) statusDiv.textContent = 'Connecting...';
         ws = new WebSocket(wsUrl);
         
         ws.onopen = () => {
-          statusDiv.textContent = 'Connected';
-          statusDiv.style.color = 'green';
-          // Send auth message if needed, or just rely on cookie if the connect endpoint handles it
-          // The current GlobalChat implementation expects a message with user_id
-          ws.send(JSON.stringify({ type: 'auth', token }));
+          if (statusDiv) {
+            statusDiv.textContent = 'Connected';
+            statusDiv.style.color = 'green';
+          }
+          retryDelay = 1000; // Reset delay on successful connection
         };
         
         ws.onmessage = (event) => {
@@ -254,43 +91,51 @@ if (!token) {
             const data = JSON.parse(event.data);
             if (data.type === 'message') {
               appendMessage(data.message);
-            } else if (data.type === 'history') {
-                // Clear existing messages first if needed, or just append
-                // messagesContainer.innerHTML = ''; 
-                // Actually, let's just append them.
-                if (Array.isArray(data.messages)) {
-                    data.messages.forEach(appendMessage);
-                }
             }
           } catch (e) {}
         };
         
         ws.onclose = () => {
-          statusDiv.textContent = 'Disconnected. Reconnecting...';
-          statusDiv.style.color = 'red';
-          setTimeout(connect, 3000);
+          if (statusDiv) {
+            statusDiv.textContent = `Disconnected. Reconnecting in ${retryDelay/1000}s...`;
+            statusDiv.style.color = 'red';
+          }
+          setTimeout(connect, retryDelay);
+          retryDelay = Math.min(retryDelay * 2, maxDelay); // Exponential backoff
         };
       }
       
-      function appendMessage(msg) {
+      function appendMessage(msg: any) {
+        if (!messagesContainer) return;
         const div = document.createElement('div');
         // Check both user_id (from server) and userId (from session)
         const isOwn = msg.user_id === userId;
-        div.className = `message ${isOwn ? 'own' : 'others'}`;
         
-        // Use user name if available, else user_id
+        // Tailwind classes for message bubbles
+        // iMessage style:
+        // Own: bg-blue-500 text-white rounded-2xl rounded-br-none ml-auto max-w-[70%]
+        // Others: bg-gray-200 text-black rounded-2xl rounded-bl-none mr-auto max-w-[70%]
+        
+        div.className = `flex flex-col ${isOwn ? 'items-end' : 'items-start'} mb-2`;
+        
         const displayName = msg.user || msg.user_id || 'Anon';
         
+        const bubbleClass = isOwn 
+            ? 'bg-[#007aff] dark:bg-[#0a84ff] text-white rounded-[18px] rounded-br-sm px-3 py-2 max-w-[75%] relative' 
+            : 'bg-[#e5e5ea] dark:bg-[#3a3b3c] text-black dark:text-[#e4e6eb] rounded-[18px] rounded-bl-sm px-3 py-2 max-w-[75%] relative';
+
         div.innerHTML = `
-          <div class="message-author">${displayName}</div>
-          <div class="message-text">${msg.text}</div>
-          <div class="message-time">${new Date(msg.created_at).toLocaleTimeString()}</div>
+          ${!isOwn ? `<div class="text-[10px] text-[#8e8e93] dark:text-[#b0b3b8] ml-3 mb-1">${displayName}</div>` : ''}
+          <div class="${bubbleClass}">
+            <div class="text-[15px] leading-snug break-words">${msg.text}</div>
+          </div>
         `;
         messagesContainer.appendChild(div);
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
       }
       
       function sendMessage() {
+        if (!input) return;
         const text = input.value.trim();
         if (text && ws && ws.readyState === WebSocket.OPEN) {
           // Get user info from session storage (set during login)
@@ -300,33 +145,34 @@ if (!token) {
           // A more secure way: Authenticate the WebSocket connection with the token, 
           // and let the server determine the user ID/Name.
           // For now, let's send what we have.
-          const userId = sessionStorage.getItem('userId') || 'anon';
-          // We don't have the user's name stored in session storage yet, let's add it to login.astro or fetch it.
-          // For now, let's default to 'Me' or 'User'.
-          // Actually, let's update login.astro to store 'userName' as well.
-          const userName = sessionStorage.getItem('userName') || 'Family Member';
 
           ws.send(JSON.stringify({ 
               type: 'message', 
               text,
               userId,
-              user: userName
+              user: userName,
+              email: userEmail
           }));
           input.value = '';
         }
       }
       
-      sendBtn.addEventListener('click', () => {
-        sendMessage();
-      });
+      if (sendBtn) {
+        sendBtn.addEventListener('click', () => {
+          sendMessage();
+        });
+      }
       
-      input.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-          e.preventDefault();
-          sendBtn.click();
-        }
-      });
+      if (input) {
+        input.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            if (sendBtn) sendBtn.click();
+          }
+        });
+      }
       
+      fetchHistory();
       connect();
     </script>
 </SocialLayout>

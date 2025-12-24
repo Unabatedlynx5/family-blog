@@ -30,16 +30,10 @@
 		"bindings": [
 			{
 				"name": "GLOBAL_CHAT",
-				"class_name": "GlobalChat"
+				"class_name": "GlobalChat",
+				"script_name": "family-blog-chat"
 			}
 		]
 	},
-	"migrations": [
-		{
-			"tag": "v1",
-			"new_sqlite_classes": [
-				"GlobalChat"
-			]
-		}
-	]
+	"migrations": []
 }

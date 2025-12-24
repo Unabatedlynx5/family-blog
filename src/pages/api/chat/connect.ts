@@ -5,11 +5,21 @@ export const prerender = false;
 export const GET: APIRoute = async ({ request, locals }) => {
   const env = locals.runtime.env as any;
   
+  // Check authentication via middleware result
+  if (!locals.user) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+  
   // Proxy request to the Durable Object instance
   const id = env.GLOBAL_CHAT.idFromName('GLOBAL_CHAT');
   const obj = env.GLOBAL_CHAT.get(id);
   
-  return obj.fetch(request);
+  // Pass user info to DO
+  const newRequest = new Request(request);
+  newRequest.headers.set('X-User-ID', locals.user.sub);
+  newRequest.headers.set('X-User-Email', locals.user.email);
+  
+  return obj.fetch(newRequest);
 };
 
 export const DELETE: APIRoute = async ({ request, locals }) => {

@@ -13,6 +13,7 @@
     "publish": true
   },
   "dependencies": {
+    "@astrojs/check": "^0.9.6",
     "@astrojs/cloudflare": "^12.6.12",
     "@astrojs/mdx": "4.3.0",
     "@astrojs/rss": "4.0.11",
@@ -21,21 +22,23 @@
     "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^9.0.2",
     "marked": "^17.0.1",
-    "typescript": "5.8.3"
+    "typescript": "^5.8.3"
   },
   "devDependencies": {
+    "@astrojs/tailwind": "^6.0.2",
     "better-sqlite3": "^11.0.0",
+    "tailwindcss": "^3.4.17",
     "vitest": "^4.0.16",
-    "wrangler": "^4.55.0"
+    "wrangler": "^4.56.0"
   },
   "scripts": {
     "astro": "astro",
     "build": "astro build",
-    "postbuild": "node scripts/append_do_export.js",
     "cf-typegen": "wrangler types",
     "check": "astro build && tsc && wrangler deploy --dry-run",
-    "deploy": "wrangler deploy",
-    "dev": "astro dev",
+    "deploy": "wrangler deploy -c wrangler.chat.json && wrangler deploy",
+    "dev": "node scripts/auto_seed.js && astro dev",
+    "dev:chat": "wrangler dev -c wrangler.chat.json",
     "preview": "astro build && wrangler dev",
     "test": "vitest run",
     "test:watch": "vitest",

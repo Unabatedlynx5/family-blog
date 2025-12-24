@@ -4,21 +4,10 @@ import { verifyAccessToken } from '../../../../workers/utils/auth.js';
 
 export const prerender = false;
 
-export const POST: APIRoute = async ({ request, locals, cookies }) => {
+export const POST: APIRoute = async ({ request, locals }) => {
   const env = locals.runtime.env as any;
   
-  // Verify authentication
-  let token = cookies.get('accessToken')?.value;
-  
-  // Also check Authorization header for flexibility (e.g. from client-side fetch where cookie might not be sent if cross-origin or specific fetch mode)
-  if (!token) {
-    const authHeader = request.headers.get('Authorization');
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      token = authHeader.substring(7);
-    }
-  }
-
-  if (!token) {
+  if (!locals.user) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
       status: 401,
       headers: { 'Content-Type': 'application/json' }
@@ -26,15 +15,6 @@ export const POST: APIRoute = async ({ request, locals, cookies }) => {
   }
 
   try {
-    const jwtSecret = await env.JWT_SECRET;
-    const decoded = verifyAccessToken(token, { JWT_SECRET: jwtSecret });
-    if (!decoded) {
-      return new Response(JSON.stringify({ error: 'Invalid token' }), { 
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
     // Parse multipart form data
     const formData = await request.formData();
     const file = formData.get('file') as File;
@@ -67,7 +47,7 @@ export const POST: APIRoute = async ({ request, locals, cookies }) => {
     // Generate unique ID and R2 key
     const id = crypto.randomUUID();
     const ext = file.name.split('.').pop();
-    const r2Key = `media/${decoded.sub}/${id}.${ext}`;
+    const r2Key = `media/${locals.user!.sub}/${id}.${ext}`;
 
     // Upload to R2
     const fileBuffer = await file.arrayBuffer();
@@ -84,7 +64,7 @@ export const POST: APIRoute = async ({ request, locals, cookies }) => {
     await env.DB.prepare(
       'INSERT INTO media (id, uploader_id, r2_key, mime_type, size, created_at) VALUES (?, ?, ?, ?, ?, ?)'
     )
-      .bind(id, decoded.sub, r2Key, file.type, file.size, now)
+      .bind(id, locals.user!.sub, r2Key, file.type, file.size, now)
       .run();
 
     return new Response(

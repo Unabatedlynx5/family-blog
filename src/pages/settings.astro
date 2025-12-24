@@ -4,80 +4,88 @@ import SocialLayout from '../layouts/SocialLayout.astro';
 export const prerender = false;
 
 // Check authentication
-const token = Astro.cookies.get('accessToken')?.value;
-if (!token) {
+const currentUser = Astro.locals.user;
+if (!currentUser) {
   return Astro.redirect('/login');
+}
+
+let user = { name: '', email: '', avatar_url: '' };
+try {
+  const userId = currentUser.sub;
+  const env = Astro.locals.runtime.env as any;
+  
+  const dbUser = await env.DB.prepare('SELECT name, email, avatar_url FROM users WHERE id = ?').bind(userId).first();
+  if (dbUser) {
+    user = dbUser;
+  }
+} catch (e) {
+  console.error('Error fetching user details', e);
 }
 ---
 <SocialLayout title="Settings">
-  <style>
-    .settings-container {
-        background: var(--white);
-        border-radius: 0.75rem;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        padding: 2rem;
-        max-width: 600px;
-        margin: 0 auto;
-    }
-    .settings-group {
-        margin-bottom: 2rem;
-        padding-bottom: 2rem;
-        border-bottom: 1px solid var(--border);
-    }
-    .settings-group:last-child {
-        border-bottom: none;
-    }
-    .settings-group h3 {
-        margin-top: 0;
-        margin-bottom: 1rem;
-        color: var(--text-main);
-    }
-    .form-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 1rem;
-    }
-    .form-row label {
-        font-weight: 500;
-        color: var(--text-secondary);
-    }
-    select, input[type="checkbox"] {
-        padding: 0.5rem;
-        border-radius: 0.25rem;
-        border: 1px solid var(--border);
-    }
-    .btn-save {
-        background: var(--primary);
-        color: white;
-        border: none;
-        padding: 0.75rem 2rem;
-        border-radius: 0.5rem;
-        cursor: pointer;
-        font-weight: 600;
-        width: 100%;
-        transition: background 0.2s;
-    }
-    .btn-save:hover {
-        background: #0062cc;
-    }
-    .status-msg {
-        margin-top: 1rem;
-        text-align: center;
-        font-size: 0.9rem;
-    }
-    .success { color: green; }
-    .error { color: red; }
-  </style>
-
-  <div class="settings-container">
-    <h2>Settings</h2>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" />
+  
+  <div class="bg-white dark:bg-[#242526] rounded-xl shadow-sm p-8">
+    <h2 class="text-2xl font-bold mb-6 text-gray-900 dark:text-[#e4e6eb]">Settings</h2>
     
-    <div class="settings-group">
-        <h3>Appearance</h3>
-        <div class="form-row">
-            <label for="theme">Theme</label>
-            <select id="theme">
+    <div class="mb-8 pb-8 border-b border-gray-200 dark:border-[#393a3b] last:border-0 last:pb-0 last:mb-0">
+        <h3 class="mt-0 mb-4 text-gray-900 dark:text-[#e4e6eb] font-semibold text-lg">Profile</h3>
+        <div class="flex flex-col gap-6">
+            <div class="flex items-center gap-4">
+                <div class="relative group">
+                    <img 
+                        src={user.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}&background=random`} 
+                        alt="Profile" 
+                        id="current-avatar"
+                        class="w-20 h-20 rounded-full object-cover border-2 border-gray-100 dark:border-[#393a3b]"
+                    />
+                    <button 
+                        id="change-avatar-btn"
+                        class="absolute bottom-0 right-0 bg-white dark:bg-[#3a3b3c] rounded-full p-1.5 shadow-md border border-gray-200 dark:border-[#393a3b] cursor-pointer hover:bg-gray-50 dark:hover:bg-[#4e4f50]"
+                        title="Change Photo"
+                    >
+                        📷
+                    </button>
+                </div>
+                <div>
+                    <h4 class="m-0 text-lg font-medium text-gray-900 dark:text-[#e4e6eb]">{user.name}</h4>
+                    <p class="m-0 text-gray-500 dark:text-[#b0b3b8] text-sm">Update your photo and personal details</p>
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-2">
+                <label for="profile-name" class="font-medium text-gray-600 dark:text-[#b0b3b8]">Name</label>
+                <input type="text" id="profile-name" class="p-2 rounded border border-gray-300 dark:border-[#393a3b] bg-white dark:bg-[#3a3b3c] text-gray-900 dark:text-[#e4e6eb]" value={user.name} placeholder="Your Name">
+            </div>
+            <div class="flex flex-col gap-2">
+                <label for="profile-email" class="font-medium text-gray-600 dark:text-[#b0b3b8]">Email</label>
+                <input type="email" id="profile-email" class="p-2 rounded border border-gray-300 dark:border-[#393a3b] bg-gray-50 dark:bg-[#3a3b3c] text-gray-500 dark:text-[#b0b3b8]" value={user.email} disabled>
+                <span class="text-xs text-gray-500 dark:text-[#b0b3b8]">Email cannot be changed</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Crop Modal -->
+    <div id="crop-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+        <div class="bg-white dark:bg-[#242526] p-6 rounded-xl max-w-lg w-full mx-4">
+            <h3 class="text-lg font-bold mb-4 text-gray-900 dark:text-[#e4e6eb]">Crop Profile Picture</h3>
+            <div class="max-h-[400px] overflow-hidden mb-4 bg-gray-100 dark:bg-[#3a3b3c] rounded">
+                <img id="crop-image" class="max-w-full" />
+            </div>
+            <div class="flex justify-end gap-3">
+                <button id="cancel-crop" class="px-4 py-2 text-gray-600 dark:text-[#b0b3b8] hover:bg-gray-100 dark:hover:bg-[#3a3b3c] rounded-lg">Cancel</button>
+                <button id="save-crop" class="px-4 py-2 bg-accent text-white rounded-lg hover:bg-[#0062cc]">Save Photo</button>
+            </div>
+        </div>
+    </div>
+    
+    <input type="file" id="avatar-input" accept="image/*" class="hidden" />
+
+    <div class="mb-8 pb-8 border-b border-gray-200 dark:border-[#393a3b] last:border-0 last:pb-0 last:mb-0">
+        <h3 class="mt-0 mb-4 text-gray-900 dark:text-[#e4e6eb] font-semibold text-lg">Appearance</h3>
+        <div class="flex justify-between items-center mb-4">
+            <label for="theme" class="font-medium text-gray-600 dark:text-[#b0b3b8]">Theme</label>
+            <select id="theme" class="p-2 rounded border border-gray-300 dark:border-[#393a3b] bg-white dark:bg-[#3a3b3c] text-gray-900 dark:text-[#e4e6eb]">
                 <option value="light">Light</option>
                 <option value="dark">Dark</option>
                 <option value="system">System Default</option>
@@ -85,33 +93,135 @@ if (!token) {
         </div>
     </div>
 
-    <div class="settings-group">
-        <h3>Notifications</h3>
-        <div class="form-row">
-            <label for="notifications">Enable Notifications</label>
-            <input type="checkbox" id="notifications">
+    <div class="mb-8 pb-8 border-b border-gray-200 dark:border-[#393a3b] last:border-0 last:pb-0 last:mb-0">
+        <h3 class="mt-0 mb-4 text-gray-900 dark:text-[#e4e6eb] font-semibold text-lg">Notifications</h3>
+        <div class="flex justify-between items-center mb-4">
+            <label for="notifications" class="font-medium text-gray-600 dark:text-[#b0b3b8]">Enable Notifications (WIP)</label>
+            <input type="checkbox" id="notifications" class="p-2 rounded border border-gray-300 dark:border-[#393a3b] bg-white dark:bg-[#3a3b3c]">
         </div>
     </div>
 
-    <div class="settings-group">
-        <h3>Language</h3>
-        <div class="form-row">
-            <label for="language">Language</label>
-            <select id="language">
+    <!-- <div class="mb-8 pb-8 border-b border-gray-200 last:border-0 last:pb-0 last:mb-0">
+        <h3 class="mt-0 mb-4 text-gray-900 font-semibold text-lg">Language</h3>
+        <div class="flex justify-between items-center mb-4">
+            <label for="language" class="font-medium text-gray-600">Language</label>
+            <select id="language" class="p-2 rounded border border-gray-300 bg-white">
                 <option value="en">English</option>
                 <option value="es">Spanish</option>
                 <option value="fr">French</option>
             </select>
         </div>
-    </div>
+    </div> -->
 
-    <button id="save-btn" class="btn-save">Save Changes</button>
-    <div id="status" class="status-msg"></div>
+    <button id="save-btn" class="w-full bg-accent text-white border-none py-3 px-8 rounded-lg cursor-pointer font-semibold transition-colors hover:bg-[#0062cc]">Save Changes</button>
   </div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
   <script>
+    interface Settings {
+        theme?: string;
+        notifications_enabled?: boolean;
+        language?: string;
+    }
+
+    // Avatar Upload Logic
+    const avatarInput = document.getElementById('avatar-input') as HTMLInputElement;
+    const changeBtn = document.getElementById('change-avatar-btn');
+    const cropModal = document.getElementById('crop-modal');
+    const cropImage = document.getElementById('crop-image') as HTMLImageElement;
+    const cancelCrop = document.getElementById('cancel-crop');
+    const saveCrop = document.getElementById('save-crop');
+    let cropper: any = null;
+
+    changeBtn?.addEventListener('click', () => avatarInput?.click());
+
+    avatarInput?.addEventListener('change', (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                if (e.target?.result) {
+                    cropImage.src = e.target.result as string;
+                    cropModal?.classList.remove('hidden');
+                    cropModal?.classList.add('flex');
+                    
+                    if (cropper) cropper.destroy();
+                    // @ts-ignore
+                    cropper = new Cropper(cropImage, {
+                        aspectRatio: 1,
+                        viewMode: 1,
+                        minContainerWidth: 300,
+                        minContainerHeight: 300
+                    });
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    cancelCrop?.addEventListener('click', () => {
+        cropModal?.classList.add('hidden');
+        cropModal?.classList.remove('flex');
+        if (cropper) cropper.destroy();
+        avatarInput.value = '';
+    });
+
+    saveCrop?.addEventListener('click', () => {
+        if (!cropper) return;
+        
+        cropper.getCroppedCanvas({
+            width: 400,
+            height: 400
+        }).toBlob(async (blob: Blob) => {
+            const formData = new FormData();
+            formData.append('file', blob, 'avatar.png');
+            
+            const token = sessionStorage.getItem('accessToken');
+            if (!token) return;
+
+            try {
+                const btn = saveCrop as HTMLButtonElement;
+                const originalText = btn.innerText;
+                btn.innerText = 'Uploading...';
+                btn.disabled = true;
+
+                const res = await fetch('/api/user/avatar', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData
+                });
+
+                if (res.ok) {
+                    const data = await res.json() as { avatar_url: string };
+                    const img = document.getElementById('current-avatar') as HTMLImageElement;
+                    if (img) img.src = data.avatar_url;
+                    
+                    cropModal?.classList.add('hidden');
+                    cropModal?.classList.remove('flex');
+                    if (cropper) cropper.destroy();
+                } else {
+                    alert('Failed to upload avatar');
+                }
+                
+                btn.innerText = originalText;
+                btn.disabled = false;
+            } catch (e) {
+                console.error(e);
+                alert('Error uploading avatar');
+            }
+        }, 'image/png');
+    });
+
     // Load settings on page load
     async function loadSettings() {
+        // 1. Load from localStorage first (fast)
+        const cachedTheme = localStorage.getItem('theme');
+        const themeSelect = document.getElementById('theme') as HTMLSelectElement | null;
+        if (themeSelect && cachedTheme) {
+            themeSelect.value = cachedTheme;
+            applyTheme(cachedTheme);
+        }
+
         const token = sessionStorage.getItem('accessToken');
         if (!token) return;
 
@@ -120,17 +230,22 @@ if (!token) {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
-                const settings = await res.json();
-                const themeSelect = document.getElementById('theme') as HTMLSelectElement;
-                const notifCheck = document.getElementById('notifications') as HTMLInputElement;
-                const langSelect = document.getElementById('language') as HTMLSelectElement;
+                const settings = await res.json() as Settings;
+                const notifCheck = document.getElementById('notifications') as HTMLInputElement | null;
+                const langSelect = document.getElementById('language') as HTMLSelectElement | null;
 
-                if (themeSelect) themeSelect.value = settings.theme || 'light';
+                if (themeSelect && settings.theme) {
+                    // Only update if different to avoid overwriting user's current session choice if they changed it before load finished?
+                    // Actually, server source of truth is usually better, but localStorage is faster.
+                    // Let's sync localStorage with server.
+                    if (settings.theme !== cachedTheme) {
+                        themeSelect.value = settings.theme;
+                        localStorage.setItem('theme', settings.theme);
+                        applyTheme(settings.theme);
+                    }
+                }
                 if (notifCheck) notifCheck.checked = !!settings.notifications_enabled;
                 if (langSelect) langSelect.value = settings.language || 'en';
-
-                // Apply theme immediately
-                applyTheme(settings.theme);
             }
         } catch (e) {
             console.error('Failed to load settings', e);
@@ -138,25 +253,34 @@ if (!token) {
     }
 
     function applyTheme(theme: string) {
-        if (theme === 'dark') {
-            document.documentElement.classList.add('dark-theme');
-            document.body.style.backgroundColor = '#1c1e21';
-            document.body.style.color = '#e4e6eb';
+        const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        
+        if (isDark) {
+            document.documentElement.classList.add('dark');
         } else {
-            document.documentElement.classList.remove('dark-theme');
-            document.body.style.backgroundColor = '';
-            document.body.style.color = '';
+            document.documentElement.classList.remove('dark');
         }
     }
 
     document.getElementById('save-btn')?.addEventListener('click', async () => {
-        const theme = (document.getElementById('theme') as HTMLSelectElement).value;
-        const notifications_enabled = (document.getElementById('notifications') as HTMLInputElement).checked;
-        const language = (document.getElementById('language') as HTMLSelectElement).value;
-        const statusEl = document.getElementById('status');
-        const token = sessionStorage.getItem('accessToken');
+        const themeSelect = document.getElementById('theme') as HTMLSelectElement | null;
+        const notifCheck = document.getElementById('notifications') as HTMLInputElement | null;
+        const langSelect = document.getElementById('language') as HTMLSelectElement | null;
+        
+        const theme = themeSelect?.value || 'light';
+        const notifications_enabled = notifCheck?.checked || false;
+        const language = langSelect?.value || 'en';
 
-        if (statusEl) statusEl.textContent = 'Saving...';
+        // Save to localStorage immediately
+        localStorage.setItem('theme', theme);
+        applyTheme(theme);
+
+        const btn = document.getElementById('save-btn') as HTMLButtonElement;
+        const originalText = btn.innerText;
+        btn.innerText = 'Saving...';
+        btn.disabled = true;
+
+        const token = sessionStorage.getItem('accessToken');
 
         try {
             const res = await fetch('/api/settings', {
@@ -169,19 +293,21 @@ if (!token) {
             });
 
             if (res.ok) {
-                if (statusEl) {
-                    statusEl.textContent = 'Settings saved successfully!';
-                    statusEl.className = 'status-msg success';
-                }
-                applyTheme(theme);
+                btn.innerText = 'Saved!';
+                setTimeout(() => {
+                    btn.innerText = originalText;
+                    btn.disabled = false;
+                }, 2000);
             } else {
                 throw new Error('Failed to save');
             }
         } catch (e) {
-            if (statusEl) {
-                statusEl.textContent = 'Error saving settings.';
-                statusEl.className = 'status-msg error';
-            }
+            console.error(e);
+            btn.innerText = 'Error Saving';
+            setTimeout(() => {
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }, 2000);
         }
     });
 

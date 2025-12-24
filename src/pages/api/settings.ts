@@ -39,10 +39,20 @@ export const GET: APIRoute = async ({ locals, cookies, request }) => {
         theme: 'light',
         notifications_enabled: 1,
         language: 'en'
-      }), { status: 200 });
+      }), { 
+        status: 200,
+        headers: {
+          'Cache-Control': 'private, max-age=300' // Cache for 5 minutes
+        }
+      });
     }
 
-    return new Response(JSON.stringify(settings), { status: 200 });
+    return new Response(JSON.stringify(settings), { 
+      status: 200,
+      headers: {
+        'Cache-Control': 'private, max-age=300' // Cache for 5 minutes
+      }
+    });
   } catch (err) {
     console.error('Settings fetch error:', err);
     return new Response(JSON.stringify({ error: 'Server error' }), { status: 500 });

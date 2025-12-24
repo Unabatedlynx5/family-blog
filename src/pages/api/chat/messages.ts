@@ -36,7 +36,7 @@ export const GET: APIRoute = async ({ request, locals, cookies }) => {
 
     // Get last 50 messages
     const result = await env.DB.prepare(
-      'SELECT id, user_id, user_name, user_email, message, created_at FROM chat_messages ORDER BY created_at DESC LIMIT 50'
+      'SELECT id, user_id, user_name as user, user_email, message as text, created_at FROM chat_messages ORDER BY created_at DESC LIMIT 50'
     ).all();
 
     const messages = (result.results || []).reverse(); // Show oldest first
