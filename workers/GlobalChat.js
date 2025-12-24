@@ -7,30 +7,42 @@ export class GlobalChat {
   }
 
   async fetch(request) {
-    if (request.method === 'DELETE') {
-      // return this.cleanupMessages();
-      return new Response('Not implemented', { status: 501 });
-    }
+    try {
+      if (request.method === 'DELETE') {
+        // return this.cleanupMessages();
+        return new Response('Not implemented', { status: 501 });
+      }
 
-    const upgrade = request.headers.get('Upgrade') || '';
-    if (upgrade.toLowerCase() !== 'websocket') {
-      return new Response('Expected websocket', { status: 400 });
+      const upgrade = request.headers.get('Upgrade') || '';
+      if (upgrade.toLowerCase() !== 'websocket') {
+        return new Response('Expected websocket', { status: 400 });
+      }
+      
+      const pair = new WebSocketPair();
+      const [client, server] = pair;
+      
+      // Use Hibernation API
+      this.state.acceptWebSocket(server);
+      console.log(`[GlobalChat] WebSocket accepted. Active connections: ${this.state.getWebSockets().length}`);
+      
+      // History is now fetched from D1 via API, so we don't send it here.
+      
+      return new Response(null, { status: 101, webSocket: client });
+    } catch (err) {
+      console.error('[GlobalChat] Fetch error:', err);
+      return new Response('Internal Server Error', { status: 500 });
     }
-    
-    const pair = new WebSocketPair();
-    const [client, server] = pair;
-    
-    // Use Hibernation API
-    this.state.acceptWebSocket(server);
-    
-    // History is now fetched from D1 via API, so we don't send it here.
-    
-    return new Response(null, { status: 101, webSocket: client });
   }
 
   async webSocketMessage(ws, message) {
     try {
-      const data = JSON.parse(message);
+      let data;
+      try {
+        data = JSON.parse(message);
+      } catch (e) {
+        console.error('[GlobalChat] Invalid JSON received:', message);
+        return;
+      }
       
       if (data.type !== 'message') {
           return;
@@ -53,22 +65,31 @@ export class GlobalChat {
         .bind(msg.id, msg.user_id, msg.user, msg.user_email, msg.text, msg.created_at)
         .run();
       } catch (err) {
-        console.error('Failed to save message to D1:', err);
+        console.error('[GlobalChat] Failed to save message to D1:', err);
       }
 
       // Broadcast
       const broadcastMsg = JSON.stringify({ type: 'message', message: msg });
-      for (const client of this.state.getWebSockets()) {
-        try { client.send(broadcastMsg); } catch (e) {}
+      const sockets = this.state.getWebSockets();
+      console.log(`[GlobalChat] Broadcasting message to ${sockets.length} clients`);
+      
+      for (const client of sockets) {
+        try { 
+          client.send(broadcastMsg); 
+        } catch (e) {
+          console.error('[GlobalChat] Failed to send to client:', e);
+        }
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error('[GlobalChat] Unexpected error in webSocketMessage:', e);
+    }
   }
 
   async webSocketClose(ws, code, reason, wasClean) {
-    // No cleanup needed
+    console.log(`[GlobalChat] WebSocket closed. Code: ${code}, Reason: ${reason}, Clean: ${wasClean}`);
   }
   
   async webSocketError(ws, error) {
-    // No cleanup needed
+    console.error('[GlobalChat] WebSocket error:', error);
   }
 }
