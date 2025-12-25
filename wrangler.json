@@ -36,11 +36,5 @@
 		]
 	},
 	"migrations": [
-		{
-			"tag": "delete-global-chat-v1",
-			"deleted_classes": [
-				"GlobalChat"
-			]
-		}
 	]
 }

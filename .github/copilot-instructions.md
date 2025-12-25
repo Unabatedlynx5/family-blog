@@ -57,6 +57,10 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to be product
   - [x] Add "signing in..." after the user submits login form.
   - [x] Add user profile pictures stored in R2 and displayed in chat and comments.
   - [x] Add birthday to settings, and correctly update birthday on social layout.
+  - [x] Fix user profile picture upload to default to the user who is logged in.
+  - [x] Fix server errors when saving settings without changing profile picture and other fields.
+  - [x] Fix email not displaying correctly in settings page after update.
+  - [ ] Add hover for adding picture to post.
   - [ ] Implement user presence indicators in chat (online/offline).
     - [ ] Implement online status indicators.
   - [ ] Add a toolbar for editing blog posts and make a user friendly way to add markdown content. (i.e. bold, underline, headings, links, images, etc.)
@@ -68,6 +72,8 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to be product
   - [ ] Implement caching for frequently accessed data (e.g., blog posts).
   - [ ] Add blog button to social layout for easy access. 
   - [ ] Add recipe button for recipe content in the future.
+  - [ ] Create members page
+  - [ ] Create photos page
 
 
 References: README ([README.md](../README.md)), test guide ([tests/README.md](../tests/README.md)), `package.json` scripts ([package.json](../package.json)).

@@ -9,14 +9,19 @@ if (!currentUser) {
   return Astro.redirect('/login');
 }
 
-let user = { name: '', email: '', avatar_url: '', birthday: '' };
+let user = { 
+  name: currentUser.name || '', 
+  email: currentUser.email || '', 
+  avatar_url: '', 
+  birthday: '' 
+};
 try {
   const userId = currentUser.sub;
   const env = Astro.locals.runtime.env as any;
   
   const dbUser = await env.DB.prepare('SELECT name, email, avatar_url, birthday FROM users WHERE id = ?').bind(userId).first();
   if (dbUser) {
-    user = dbUser;
+    user = { ...user, ...dbUser };
   }
 } catch (e) {
   console.error('Error fetching user details', e);

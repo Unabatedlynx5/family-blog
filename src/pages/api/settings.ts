@@ -2,31 +2,17 @@ import type { APIRoute } from 'astro';
 
 export const prerender = false;
 
-export const GET: APIRoute = async ({ locals, cookies, request }) => {
+export const GET: APIRoute = async ({ locals }) => {
   const env = locals.runtime.env as any;
   
-  // Verify authentication
-  let token = cookies.get('accessToken')?.value;
-  if (!token) {
-    const authHeader = request.headers.get('Authorization');
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      token = authHeader.substring(7);
-    }
+  if (!locals.user) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
+      status: 401,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 
-  if (!token) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
-  }
-
-  // Decode token to get user ID
-  let userId;
-  try {
-    const parts = token.split('.');
-    const payload = JSON.parse(atob(parts[1]));
-    userId = payload.sub;
-  } catch (e) {
-    return new Response(JSON.stringify({ error: 'Invalid token' }), { status: 401 });
-  }
+  const userId = locals.user.sub;
 
   try {
     const settings = await env.DB.prepare(
@@ -59,31 +45,17 @@ export const GET: APIRoute = async ({ locals, cookies, request }) => {
   }
 };
 
-export const POST: APIRoute = async ({ request, locals, cookies }) => {
+export const POST: APIRoute = async ({ request, locals }) => {
   const env = locals.runtime.env as any;
   
-  // Verify authentication
-  let token = cookies.get('accessToken')?.value;
-  if (!token) {
-    const authHeader = request.headers.get('Authorization');
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      token = authHeader.substring(7);
-    }
+  if (!locals.user) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
+      status: 401,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 
-  if (!token) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
-  }
-
-  // Decode token to get user ID
-  let userId;
-  try {
-    const parts = token.split('.');
-    const payload = JSON.parse(atob(parts[1]));
-    userId = payload.sub;
-  } catch (e) {
-    return new Response(JSON.stringify({ error: 'Invalid token' }), { status: 401 });
-  }
+  const userId = locals.user.sub;
 
   try {
     const body = await request.json() as any;

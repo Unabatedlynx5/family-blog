@@ -14,6 +14,14 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   // 1. Check Access Token
   let accessToken = cookies.get('accessToken')?.value;
+  
+  if (!accessToken) {
+    const authHeader = context.request.headers.get('Authorization');
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      accessToken = authHeader.substring(7);
+    }
+  }
+
   let user = null;
 
   if (accessToken) {
