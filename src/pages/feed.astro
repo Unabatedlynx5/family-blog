@@ -15,8 +15,8 @@ if (!user) {
   <div id="composer" class="bg-white dark:bg-[#242526] p-4 rounded-lg shadow-sm mb-4">
     <textarea id="content" rows="3" placeholder="What's on your mind?" class="w-full border-none bg-[#f0f2f5] dark:bg-[#3a3b3c] dark:text-[#e4e6eb] p-4 rounded-3xl resize-none font-inherit box-border mb-4 focus:outline-none"></textarea>
     <div class="flex justify-between items-center border-t border-[#e4e6eb] dark:border-[#3e4042] pt-4">
-      <div class="relative overflow-hidden inline-block">
-        <div class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#f0f2f5] dark:hover:bg-[#3a3b3c] cursor-pointer text-[#65676b] dark:text-[#b0b3b8] font-semibold">
+      <div class="relative overflow-hidden inline-block group">
+        <div class="flex items-center gap-2 px-3 py-2 rounded-lg group-hover:bg-[#f0f2f5] dark:group-hover:bg-[#3a3b3c] group-hover:text-[#667eea] cursor-pointer text-[#65676b] dark:text-[#b0b3b8] font-semibold transition-colors">
             <span>🖼️</span> Photo
         </div>
         <input id="file" type="file" accept="image/*" class="absolute left-0 top-0 opacity-0 w-full h-full cursor-pointer text-[100px]" />
