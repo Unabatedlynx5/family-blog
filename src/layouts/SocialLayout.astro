@@ -7,6 +7,7 @@ const { title = 'Family Feed' } = Astro.props;
 const token = Astro.cookies.get('accessToken')?.value;
 let avatarSrc = 'https://ui-avatars.com/api/?name=User&background=random';
 let upcomingBirthdays: any[] = [];
+let activeMembers: any[] = [];
 
 if (token) {
   try {
@@ -51,6 +52,16 @@ if (token) {
             })
             .filter((u: any) => u.daysUntil >= 0 && u.daysUntil <= 14) // Next 2 weeks
             .sort((a: any, b: any) => a.daysUntil - b.daysUntil);
+        // Fetch recently active members (last_seen within 2 minutes)
+        try {
+            const twoMinutesAgo = Math.floor(Date.now() / 1000) - 120;
+            const activeRows = await env.DB.prepare('SELECT id, name, avatar_url, last_seen FROM users WHERE last_seen IS NOT NULL AND last_seen > ? ORDER BY last_seen DESC LIMIT 50').bind(twoMinutesAgo).all();
+            if (activeRows?.results) {
+                activeMembers = activeRows.results.map((r: any) => ({ id: r.id, name: r.name, avatar_url: r.avatar_url, last_seen: r.last_seen }));
+            }
+        } catch (e) {
+            // ignore presence fetch errors
+        }
         }
     }
   } catch (e) {
@@ -143,15 +154,18 @@ if (token) {
             )}
             <div class="bg-white dark:bg-[#242526] rounded-lg p-4 mb-4 shadow-sm">
                 <h3 class="text-base text-[#65676b] dark:text-[#b0b3b8] mt-0 mb-4">Online Family</h3>
-                <div class="flex items-center mb-2 p-1 rounded cursor-pointer hover:bg-[#f0f2f5] dark:hover:bg-[#3a3b3c]">
-                    <div class="w-[30px] h-[30px] bg-[#ddd] rounded-full mr-2"></div>
-                    <span>Sarah</span>
-                    <div class="w-2 h-2 bg-[#31a24c] rounded-full ml-auto"></div>
-                </div>
-                <div class="flex items-center mb-2 p-1 rounded cursor-pointer hover:bg-[#f0f2f5] dark:hover:bg-[#3a3b3c]">
-                    <div class="w-[30px] h-[30px] bg-[#ddd] rounded-full mr-2"></div>
-                    <span>Mom</span>
-                    <div class="w-2 h-2 bg-[#31a24c] rounded-full ml-auto"></div>
+                <div id="online-family-list">
+                {activeMembers.length === 0 ? (
+                    <div class="text-sm text-[#65676b] dark:text-[#b0b3b8]">No one online</div>
+                ) : (
+                    activeMembers.map((m: any) => (
+                        <div class="flex items-center mb-2 p-1 rounded cursor-pointer hover:bg-[#f0f2f5] dark:hover:bg-[#3a3b3c]">
+                            <img src={m.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name || 'User')}&background=random`} class="w-[30px] h-[30px] rounded-full mr-2 object-cover" alt={m.name} />
+                            <span>{m.name || 'Unknown'}</span>
+                            <div class="w-2 h-2 bg-[#31a24c] rounded-full ml-auto"></div>
+                        </div>
+                    ))
+                )}
                 </div>
             </div>
         </aside>
@@ -184,6 +198,48 @@ if (token) {
                 console.error('Logout failed', e);
             }
         });
+    </script>
+    <script>
+        // Site-wide presence heartbeat and online list refresh
+        (function(){
+            const PRESENCE_INTERVAL = 30 * 1000;
+            async function sendPresence(){
+                try{
+                    await fetch('/api/chat/presence', { method: 'POST', credentials: 'same-origin' });
+                }catch(e){/* ignore */}
+            }
+
+            async function refreshOnlineList(){
+                try{
+                    const res = await fetch('/api/members');
+                    if (!res.ok) return;
+                    const data = await res.json() as any;
+                    const listEl = document.getElementById('online-family-list');
+                    if (!listEl) return;
+                    const members = Array.isArray(data.members) ? data.members : [];
+                    if (members.length === 0){
+                        listEl.innerHTML = `<div class="text-sm text-[#65676b] dark:text-[#b0b3b8]">No one online</div>`;
+                        return;
+                    }
+                    listEl.innerHTML = members.map((m: any)=>{
+                        const avatar = m.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name || 'User')}&background=random`;
+                        const name = m.name || 'Unknown';
+                        return `
+                            <div class="flex items-center mb-2 p-1 rounded cursor-pointer hover:bg-[#f0f2f5] dark:hover:bg-[#3a3b3c]">
+                                <img src="${avatar}" class="w-[30px] h-[30px] rounded-full mr-2 object-cover" alt="${name}" />
+                                <span>${name}</span>
+                                <div class="w-2 h-2 bg-[#31a24c] rounded-full ml-auto"></div>
+                            </div>
+                        `;
+                    }).join('');
+                }catch(e){/* ignore */}
+            }
+
+            // initial fire
+            sendPresence();
+            refreshOnlineList();
+            setInterval(()=>{ sendPresence(); refreshOnlineList(); }, PRESENCE_INTERVAL);
+        })();
     </script>
 </body>
 </html>
