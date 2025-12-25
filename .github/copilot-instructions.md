@@ -49,7 +49,6 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to be product
 
 - **Current Focus & Todo**:
   - [x] Implement password reset flow (email + token).
-  - [ ] Add rate limiting to auth endpoints to mitigate brute-force attacks.
   - [x] Improve error handling and logging for Durable Object connections.
   - [x] Improve test coverage for chat Durable Object (especially edge cases).
   - [x] Improve test coverage for media upload and R2 interactions.
@@ -60,7 +59,7 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to be product
   - [x] Fix user profile picture upload to default to the user who is logged in.
   - [x] Fix server errors when saving settings without changing profile picture and other fields.
   - [x] Fix email not displaying correctly in settings page after update.
-  - [ ] Add hover for adding picture to post.
+  - [x] Add color change on hover for adding picture to post.
   - [ ] Implement user presence indicators in chat (online/offline).
     - [ ] Implement online status indicators.
   - [ ] Add a toolbar for editing blog posts and make a user friendly way to add markdown content. (i.e. bold, underline, headings, links, images, etc.)
@@ -73,7 +72,23 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to be product
   - [ ] Add blog button to social layout for easy access. 
   - [ ] Add recipe button for recipe content in the future.
   - [ ] Create members page
+    - [ ] Create `src/pages/members.astro` route and layout.
+    - [ ] Create `src/pages/api/members/index.ts` endpoint to fetch active users.
+    - [ ] Design member card component (Avatar, Name, Bio).
+    - [ ] Implement grid layout for member list.
   - [ ] Create photos page
+    - [ ] Create `src/pages/photos.astro` route.
+    - [ ] Create `src/pages/api/media/gallery.ts` to fetch all image media.
+    - [ ] Implement masonry or grid layout for photos.
+    - [ ] Add lightbox/modal for viewing full-size images.
+    - [ ] Add pagination or infinite scroll for the gallery.
+  - [ ] Create calendar page
+    - [ ] Create `src/pages/calendar.astro` route.
+    - [ ] Create `src/pages/api/calendar/events.ts` to fetch birthdays and events.
+    - [ ] Implement calendar view component (Month view).
+    - [ ] Display user birthdays on the calendar.
+    - [ ] Add functionality to create custom events (requires DB migration).
+  - [ ] Add rate limiting to auth endpoints to mitigate brute-force attacks.
 
 
 References: README ([README.md](../README.md)), test guide ([tests/README.md](../tests/README.md)), `package.json` scripts ([package.json](../package.json)).
