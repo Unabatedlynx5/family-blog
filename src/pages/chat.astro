@@ -16,6 +16,7 @@ if (!user) {
       <div class="px-6 py-4 bg-[#f5f5f7]/80 dark:bg-[#242526]/80 backdrop-blur-md border-b border-black/10 dark:border-white/10 font-semibold flex justify-center items-center relative text-black dark:text-white">
         <span class="text-lg">Family Chat</span>
         <span id="connection-status" class="text-xs text-[#8e8e93] dark:text-[#b0b3b8] absolute right-6">Connecting...</span>
+        <span id="online-count" class="text-xs text-[#8e8e93] dark:text-[#b0b3b8] absolute left-6">Online: —</span>
       </div>
       
       <div id="messages" class="flex-1 overflow-y-auto px-6 py-4 flex flex-col gap-2 bg-[#f5f5f7] dark:bg-[#1c1c1e]">
@@ -74,6 +75,9 @@ if (!user) {
       let retryDelay = 1000;
       const maxDelay = 30000;
 
+      // Presence heartbeat: ping server every 30s to update last_seen
+      const PRESENCE_INTERVAL = 30 * 1000;
+
       function connect() {
         if (statusDiv) statusDiv.textContent = 'Connecting...';
         ws = new WebSocket(wsUrl);
@@ -84,6 +88,8 @@ if (!user) {
             statusDiv.style.color = 'green';
           }
           retryDelay = 1000; // Reset delay on successful connection
+          // Update presence immediately on open
+          updatePresence();
         };
         
         ws.onmessage = (event) => {
@@ -145,6 +151,25 @@ if (!user) {
           input.value = '';
         }
       }
+
+      let presenceTimer: number | null = null;
+      async function updatePresence(){
+        try{
+          await fetch('/api/chat/presence', { method: 'POST' });
+        }catch(e){/* ignore */}
+      }
+
+      async function fetchOnlineCount(){
+        try{
+          const res = await fetch('/api/members');
+          if (res.ok){
+            const data = await res.json();
+            const count = (data.active || 0);
+            const el = document.getElementById('online-count');
+            if (el) el.textContent = `Online: ${count}`;
+          }
+        }catch(e){/* ignore */}
+      }
       
       if (sendBtn) {
         sendBtn.addEventListener('click', () => {
@@ -163,5 +188,9 @@ if (!user) {
       
       fetchHistory();
       connect();
+      // Start presence heartbeat and online count refresh
+      presenceTimer = window.setInterval(()=>{ updatePresence(); fetchOnlineCount(); }, PRESENCE_INTERVAL);
+      // Also fetch online count immediately
+      fetchOnlineCount();
     </script>
 </SocialLayout>
