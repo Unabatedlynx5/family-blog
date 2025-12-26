@@ -37,6 +37,10 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to be product
   3. Update `env.d.ts` if necessary.
   4. Run `npm test` to validate.
 
+- **Database Migrations**:
+  - When applying a new migration file (e.g. `migrations/XXX_name.sql`), you MUST also record it in the `d1_migrations` table to track applied migrations.
+  - Example: `wrangler d1 execute family_blog_db --remote --command "INSERT INTO d1_migrations (name) VALUES ('XXX_name.sql');"`
+
 - **Where to look first when debugging**:
   - Local dev: `npm run dev` (Astro) — console shows serverless function errors.
   - Worker/Durable Object logic: Check `family-blog-chat` repository.
