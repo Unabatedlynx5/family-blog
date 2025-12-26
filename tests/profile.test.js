@@ -41,7 +41,13 @@ describe('Profile API Tests', () => {
       })
     });
 
-    const response = await POST({ request, locals: mockLocals, cookies: { get: () => ({ value: token }) } });
+    // Mock authenticated user in locals (simulating middleware)
+    const authenticatedLocals = {
+      ...mockLocals,
+      user: { sub: 'user123' }
+    };
+
+    const response = await POST({ request, locals: authenticatedLocals, cookies: { get: () => ({ value: token }) } });
     expect(response.status).toBe(200);
     
     expect(mockEnv.DB.prepare).toHaveBeenCalledWith(expect.stringContaining('UPDATE users'));
@@ -57,6 +63,7 @@ describe('Profile API Tests', () => {
       body: JSON.stringify({ name: 'Test' })
     });
 
+    // No user in locals
     const response = await POST({ request, locals: mockLocals, cookies: { get: () => null } });
     expect(response.status).toBe(401);
   });
@@ -71,7 +78,13 @@ describe('Profile API Tests', () => {
       body: JSON.stringify({ birthday: '1990-01-01' })
     });
 
-    const response = await POST({ request, locals: mockLocals, cookies: { get: () => ({ value: token }) } });
+    // Mock authenticated user
+    const authenticatedLocals = {
+      ...mockLocals,
+      user: { sub: 'user123' }
+    };
+
+    const response = await POST({ request, locals: authenticatedLocals, cookies: { get: () => ({ value: token }) } });
     expect(response.status).toBe(400);
   });
 });

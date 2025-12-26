@@ -37,6 +37,10 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to be product
   3. Update `env.d.ts` if necessary.
   4. Run `npm test` to validate.
 
+- **Database Migrations**:
+  - When applying a new migration file (e.g. `migrations/XXX_name.sql`), you MUST also record it in the `d1_migrations` table to track applied migrations.
+  - Example: `wrangler d1 execute family_blog_db --remote --command "INSERT INTO d1_migrations (name) VALUES ('XXX_name.sql');"`
+
 - **Where to look first when debugging**:
   - Local dev: `npm run dev` (Astro) — console shows serverless function errors.
   - Worker/Durable Object logic: Check `family-blog-chat` repository.
@@ -44,7 +48,7 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to be product
 
 - **Git & PR Workflow**:
   - **Branching**: Create a new branch for changes using the format `feature/<feature-name>`.
-  - **Pull Requests**: Automatically create a PR into `main` for these branches.
+  - **Pull Requests**: When you have finished your work, ask to create a PR into `main` for these branches.
   - **PR Summary**: Include a summary of files changed and features added in the PR description/comments.
 
 - **Current Focus & Todo**:
@@ -60,9 +64,11 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to be product
   - [x] Fix server errors when saving settings without changing profile picture and other fields.
   - [x] Fix email not displaying correctly in settings page after update.
   - [x] Add color change on hover for adding picture to post.
-  - [ ] Implement user presence indicators in chat (online/offline).
-    - [ ] Implement online status indicators.
-  - [ ] Add a toolbar for editing blog posts and make a user friendly way to add markdown content. (i.e. bold, underline, headings, links, images, etc.)
+  - [x] Implement user presence indicators in chat (online/offline).
+    - [x] Implement online status indicators.
+  - [x] Add a toolbar for editing blog posts and make a user friendly way to add content and save it to markdown. (i.e. bold, underline, headings, links, images, etc.)
+  - [x] Implement advanced editor features (smart cursor, button highlighting, list auto-increment, tab/backspace handling).
+  - [ ] Improve admin page UX for managing users (search, filter, pagination).
   - [ ] Implement astro mdx features for blog posts (like syntax highlighting).
   - [ ] Add comment functionality to blog posts.
     - [ ] Add liking functionality to chat messages and comments.
@@ -71,11 +77,11 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to be product
   - [ ] Implement caching for frequently accessed data (e.g., blog posts).
   - [ ] Add blog button to social layout for easy access. 
   - [ ] Add recipe button for recipe content in the future.
-  - [ ] Create members page
-    - [ ] Create `src/pages/members.astro` route and layout.
-    - [ ] Create `src/pages/api/members/index.ts` endpoint to fetch active users.
-    - [ ] Design member card component (Avatar, Name, Bio).
-    - [ ] Implement grid layout for member list.
+  - [x] Create members page
+    - [x] Create `src/pages/members.astro` route and layout.
+    - [x] Create `src/pages/api/members/index.ts` endpoint to fetch active users.
+    - [x] Design member card component (Avatar, Name, Bio).
+    - [x] Implement grid layout for member list.
   - [ ] Create photos page
     - [ ] Create `src/pages/photos.astro` route.
     - [ ] Create `src/pages/api/media/gallery.ts` to fetch all image media.

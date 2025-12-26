@@ -2,9 +2,9 @@ import { execSync } from 'child_process';
 import bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
 
-const EMAIL = 'admin@familyblog.com';
-const PASSWORD = 'password123';
-const NAME = 'Admin';
+const EMAIL = 'test@user.com';
+const PASSWORD = 'qwertyuiop';
+const NAME = 'Test User';
 
 async function seed() {
   try {
@@ -22,10 +22,12 @@ async function seed() {
     }
 
     const hash = bcrypt.hashSync(PASSWORD, 10);
+    // Escape $ so the shell won't expand bcrypt hash when we pass the SQL
+    const safeHash = hash.replace(/\$/g, '\\\$');
     const id = randomUUID();
     const now = Math.floor(Date.now() / 1000);
     
-    const sql = `INSERT INTO users (id, email, password_hash, name, is_active, created_at, created_by_admin) VALUES ('${id}', '${EMAIL}', '${hash}', '${NAME}', 1, ${now}, 1);`;
+    const sql = `INSERT INTO users (id, email, password_hash, name, is_active, created_at, created_by_admin) VALUES ('${id}', '${EMAIL}', '${safeHash}', '${NAME}', 1, ${now}, 1);`;
     
     execSync(`npx wrangler d1 execute family_blog_db --local --command "${sql}"`, { stdio: 'inherit' });
     console.log('Admin user created successfully.');
