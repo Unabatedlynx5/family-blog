@@ -1,0 +1,196 @@
+---
+interface Props {
+  id: string;
+  placeholder?: string;
+  initialContent?: string;
+}
+
+const { id, placeholder = 'Write something...', initialContent = '' } = Astro.props;
+---
+
+<div class="rich-text-editor border border-gray-300 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-[#242526]">
+  <div id={`${id}-toolbar`} class="toolbar flex flex-wrap items-center gap-1 p-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#3a3b3c]">
+    <!-- Text Formatting -->
+    <div class="flex items-center gap-0.5">
+      <button type="button" data-command="toggleBold" class="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-gray-700 dark:text-gray-300" title="Bold">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path></svg>
+      </button>
+      <button type="button" data-command="toggleItalic" class="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-gray-700 dark:text-gray-300" title="Italic">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="4" x2="10" y2="4"></line><line x1="14" y1="20" x2="5" y2="20"></line><line x1="15" y1="4" x2="9" y2="20"></line></svg>
+      </button>
+      <button type="button" data-command="toggleStrike" class="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-gray-700 dark:text-gray-300" title="Strike">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4H9a3 3 0 0 0-2.83 4"></path><path d="M14 12a4 4 0 0 1 0 8H6"></path><line x1="4" y1="12" x2="20" y2="12"></line></svg>
+      </button>
+    </div>
+    
+    <div class="w-px h-5 bg-gray-300 dark:bg-gray-600 mx-2"></div>
+    
+    <!-- Headings -->
+    <div class="flex items-center gap-0.5">
+      <button type="button" data-command="toggleHeading" data-level="1" class="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-gray-700 dark:text-gray-300 font-bold text-sm w-8" title="Heading 1">
+        H1
+      </button>
+      <button type="button" data-command="toggleHeading" data-level="2" class="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-gray-700 dark:text-gray-300 font-bold text-sm w-8" title="Heading 2">
+        H2
+      </button>
+      <button type="button" data-command="toggleHeading" data-level="3" class="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-gray-700 dark:text-gray-300 font-bold text-sm w-8" title="Heading 3">
+        H3
+      </button>
+    </div>
+    
+    <div class="w-px h-5 bg-gray-300 dark:bg-gray-600 mx-2"></div>
+    
+    <!-- Lists -->
+    <div class="flex items-center gap-0.5">
+      <button type="button" data-command="toggleBulletList" class="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-gray-700 dark:text-gray-300" title="Bullet List">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+      </button>
+      <button type="button" data-command="toggleOrderedList" class="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-gray-700 dark:text-gray-300" title="Ordered List">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"></line><line x1="10" y1="12" x2="21" y2="12"></line><line x1="10" y1="18" x2="21" y2="18"></line><path d="M4 6h1v4"></path><path d="M4 10h2"></path><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"></path></svg>
+      </button>
+    </div>
+    
+    <div class="w-px h-5 bg-gray-300 dark:bg-gray-600 mx-2"></div>
+    
+    <!-- Blocks -->
+    <div class="flex items-center gap-0.5">
+      <button type="button" data-command="toggleBlockquote" class="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-gray-700 dark:text-gray-300" title="Blockquote">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"></path><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"></path></svg>
+      </button>
+      <button type="button" data-command="toggleCodeBlock" class="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-gray-700 dark:text-gray-300" title="Code Block">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+      </button>
+    </div>
+  </div>
+  
+  <div id={id} class="editor-content min-h-[150px] p-4 prose dark:prose-invert max-w-none focus:outline-none cursor-text" data-placeholder={placeholder} data-initial-content={initialContent}></div>
+  <input type="hidden" id={`${id}-input`} name={id} />
+</div>
+
+<style is:global>
+  /* Tiptap editor overrides */
+  .editor-content p {
+    margin-bottom: 0.5rem !important;
+    line-height: 1.5 !important;
+  }
+  .editor-content p:last-child {
+    margin-bottom: 0 !important;
+  }
+  /* Ensure lists have proper spacing inside editor */
+  .editor-content ul, .editor-content ol {
+    margin-bottom: 0.5rem !important;
+    padding-left: 1.5rem !important;
+  }
+  .editor-content ul {
+    list-style-type: disc !important;
+  }
+  .editor-content ol {
+    list-style-type: decimal !important;
+  }
+  .editor-content li p {
+    margin-bottom: 0 !important;
+  }
+</style>
+
+<script>
+  import { Editor } from '@tiptap/core';
+  import StarterKit from '@tiptap/starter-kit';
+  import Link from '@tiptap/extension-link';
+  import { Markdown } from 'tiptap-markdown';
+
+  // Initialize editors
+  document.querySelectorAll('.rich-text-editor').forEach(container => {
+    const editorContentEl = container.querySelector('.editor-content');
+    if (!editorContentEl) return;
+
+    const editorId = editorContentEl.id;
+    const input = container.querySelector('input[type="hidden"]') as HTMLInputElement;
+    const toolbar = container.querySelector('.toolbar');
+    const initialContent = editorContentEl.getAttribute('data-initial-content') || '';
+    const placeholder = editorContentEl.getAttribute('data-placeholder') || '';
+    
+    const editor = new Editor({
+      element: editorContentEl as HTMLElement,
+      extensions: [
+        StarterKit,
+        Link.configure({
+            openOnClick: false,
+            HTMLAttributes: {
+                class: 'text-blue-500 hover:underline',
+            },
+        }),
+        Markdown,
+      ],
+      content: initialContent,
+      editorProps: {
+        attributes: {
+          class: 'focus:outline-none min-h-[150px]',
+        },
+      },
+      onUpdate: ({ editor }) => {
+        const markdown = (editor.storage as any).markdown.getMarkdown();
+        if (input) {
+            input.value = markdown;
+            // Trigger change event on input for reactivity if needed
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      },
+      onSelectionUpdate: ({ editor }) => {
+        if (toolbar) updateToolbar(toolbar, editor);
+      },
+      onTransaction: ({ editor }) => {
+        if (toolbar) updateToolbar(toolbar, editor);
+      }
+    });
+
+    // Listen for reset event on the input to clear editor
+    if (input) {
+        input.addEventListener('reset-editor', () => {
+            editor.commands.setContent('');
+        });
+    }
+
+    // Toolbar click handlers
+    if (toolbar) {
+        toolbar.querySelectorAll('button').forEach(button => {
+        button.addEventListener('click', (e) => {
+            e.preventDefault(); // Prevent form submission if inside a form
+            const command = button.dataset.command;
+            const level = button.dataset.level ? parseInt(button.dataset.level) : null;
+
+            if (command === 'toggleBold') editor.chain().focus().toggleBold().run();
+            if (command === 'toggleItalic') editor.chain().focus().toggleItalic().run();
+            if (command === 'toggleStrike') editor.chain().focus().toggleStrike().run();
+            if (command === 'toggleHeading' && level) editor.chain().focus().toggleHeading({ level: level as 1|2|3|4|5|6 }).run();
+            if (command === 'toggleBulletList') editor.chain().focus().toggleBulletList().run();
+            if (command === 'toggleOrderedList') editor.chain().focus().toggleOrderedList().run();
+            if (command === 'toggleBlockquote') editor.chain().focus().toggleBlockquote().run();
+            if (command === 'toggleCodeBlock') editor.chain().focus().toggleCodeBlock().run();
+        });
+        });
+    }
+
+    function updateToolbar(toolbar: Element, editor: Editor) {
+      toolbar.querySelectorAll('button').forEach(button => {
+        const command = button.dataset.command;
+        const level = button.dataset.level ? parseInt(button.dataset.level) : null;
+        let isActive = false;
+
+        if (command === 'toggleBold') isActive = editor.isActive('bold');
+        if (command === 'toggleItalic') isActive = editor.isActive('italic');
+        if (command === 'toggleStrike') isActive = editor.isActive('strike');
+        if (command === 'toggleHeading' && level) isActive = editor.isActive('heading', { level });
+        if (command === 'toggleBulletList') isActive = editor.isActive('bulletList');
+        if (command === 'toggleOrderedList') isActive = editor.isActive('orderedList');
+        if (command === 'toggleBlockquote') isActive = editor.isActive('blockquote');
+        if (command === 'toggleCodeBlock') isActive = editor.isActive('codeBlock');
+
+        if (isActive) {
+          button.classList.add('bg-gray-200', 'dark:bg-gray-600', 'text-blue-600', 'dark:text-blue-400');
+        } else {
+          button.classList.remove('bg-gray-200', 'dark:bg-gray-600', 'text-blue-600', 'dark:text-blue-400');
+        }
+      });
+    }
+  });
+</script>

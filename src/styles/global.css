@@ -57,7 +57,7 @@
   
   p { @apply mb-4; }
   
-  .prose p { @apply mb-8; }
+  .prose p { @apply mb-4; }
   
   textarea { @apply w-full text-base; }
   input { @apply text-base; }

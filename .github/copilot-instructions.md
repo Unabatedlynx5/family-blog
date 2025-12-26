@@ -64,10 +64,10 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to be product
   - [x] Fix server errors when saving settings without changing profile picture and other fields.
   - [x] Fix email not displaying correctly in settings page after update.
   - [x] Add color change on hover for adding picture to post.
-  - [ ] Implement user presence indicators in chat (online/offline).
-    - [ ] Implement online status indicators.
-  - [ ] Add a toolbar for editing blog posts and make a user friendly way to add markdown content. (i.e. bold, underline, headings, links, images, etc.)
-  - [ ] Implement rich text editor for blog posts with live preview.
+  - [x] Implement user presence indicators in chat (online/offline).
+    - [x] Implement online status indicators.
+  - [x] Add a toolbar for editing blog posts and make a user friendly way to add content and save it to markdown. (i.e. bold, underline, headings, links, images, etc.)
+  - [x] Implement advanced editor features (smart cursor, button highlighting, list auto-increment, tab/backspace handling).
   - [ ] Improve admin page UX for managing users (search, filter, pagination).
   - [ ] Implement astro mdx features for blog posts (like syntax highlighting).
   - [ ] Add comment functionality to blog posts.
@@ -77,11 +77,11 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to be product
   - [ ] Implement caching for frequently accessed data (e.g., blog posts).
   - [ ] Add blog button to social layout for easy access. 
   - [ ] Add recipe button for recipe content in the future.
-  - [ ] Create members page
-    - [ ] Create `src/pages/members.astro` route and layout.
-    - [ ] Create `src/pages/api/members/index.ts` endpoint to fetch active users.
-    - [ ] Design member card component (Avatar, Name, Bio).
-    - [ ] Implement grid layout for member list.
+  - [x] Create members page
+    - [x] Create `src/pages/members.astro` route and layout.
+    - [x] Create `src/pages/api/members/index.ts` endpoint to fetch active users.
+    - [x] Design member card component (Avatar, Name, Bio).
+    - [x] Implement grid layout for member list.
   - [ ] Create photos page
     - [ ] Create `src/pages/photos.astro` route.
     - [ ] Create `src/pages/api/media/gallery.ts` to fetch all image media.
