@@ -83,7 +83,7 @@ export const GET: APIRoute = async ({ request, locals, url }) => {
   } catch (err) {
     console.error('Error listing users:', err);
     return new Response(
-      JSON.stringify({ error: 'Server error', details: err instanceof Error ? err.message : String(err) }), 
+      JSON.stringify({ error: 'Server error' }), 
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
@@ -155,7 +155,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
   } catch (err) {
     console.error('Error creating user:', err);
     return new Response(
-      JSON.stringify({ error: 'Server error', details: err instanceof Error ? err.message : String(err) }), 
+      JSON.stringify({ error: 'Server error' }), 
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }

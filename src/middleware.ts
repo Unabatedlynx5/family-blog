@@ -72,7 +72,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
             cookies.delete('accessToken', { path: '/' });
         }
       } catch (e) {
-        console.error("Middleware refresh error", e);
+        // Log error but don't expose details
+        console.error("Middleware refresh error");
+        // Clear potentially compromised tokens
+        cookies.delete('refresh', { path: '/' });
+        cookies.delete('accessToken', { path: '/' });
       }
     }
   }

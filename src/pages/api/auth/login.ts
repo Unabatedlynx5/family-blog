@@ -1,10 +1,12 @@
 import type { APIRoute } from 'astro';
 // @ts-ignore
 import { verifyPassword, createAccessToken, createAndStoreRefreshToken } from '../../../../workers/utils/auth.js';
+// @ts-ignore
+import { isRateLimited, getRateLimitInfo } from '../../../../workers/utils/rate-limit.js';
 
 export const prerender = false;
 
-export const POST: APIRoute = async ({ request, locals, cookies }) => {
+export const POST: APIRoute = async ({ request, locals, cookies, clientAddress }) => {
   const env = locals.runtime.env as any;
   
   let body;
@@ -23,6 +25,22 @@ export const POST: APIRoute = async ({ request, locals, cookies }) => {
     return new Response(JSON.stringify({ error: 'Missing credentials' }), { 
       status: 400,
       headers: { 'Content-Type': 'application/json' }
+    });
+  }
+
+  // Rate limiting: 5 attempts per 15 minutes per IP or email
+  const rateLimitKey = `login:${clientAddress || 'unknown'}:${email}`;
+  if (isRateLimited(rateLimitKey, 5, 15 * 60 * 1000)) {
+    const info = getRateLimitInfo(rateLimitKey) as { remaining: number; reset: number };
+    return new Response(JSON.stringify({ 
+      error: 'Too many login attempts. Please try again later.',
+      retryAfter: Math.ceil((info.reset - Date.now()) / 1000)
+    }), { 
+      status: 429,
+      headers: { 
+        'Content-Type': 'application/json',
+        'Retry-After': String(Math.ceil((info.reset - Date.now()) / 1000))
+      }
     });
   }
 

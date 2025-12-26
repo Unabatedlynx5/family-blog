@@ -61,15 +61,40 @@ Any static assets, like images, can be placed in the `public/` directory.
 - Cloudflare account
 - Wrangler CLI
 
-### Installation
+### Local Development Setup
 
-```bash
-# Install dependencies
-npm install
+1. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-# Install wrangler globally (if not already installed)
-npm i -g wrangler
-```
+2. **Set up environment variables**
+   ```bash
+   # Automated setup (recommended)
+   ./scripts/setup_env.sh
+   
+   # Or manually copy and edit the example files
+   cp .env.example .env
+   cp .dev.vars.example .dev.vars
+   ```
+   
+   See [docs/LOCAL_DEVELOPMENT.md](./docs/LOCAL_DEVELOPMENT.md) for detailed setup instructions.
+
+3. **Start development server**
+   ```bash
+   # Option 1: Astro dev (fast, but no Cloudflare bindings)
+   npm run dev
+   
+   # Option 2: Wrangler preview (full Cloudflare environment)
+   npm run preview
+   ```
+
+4. **Create admin user**
+   ```bash
+   npm run seed:admin
+   ```
+
+For complete local development guide, see [docs/LOCAL_DEVELOPMENT.md](./docs/LOCAL_DEVELOPMENT.md).
 
 ## 🧞 Commands
 
