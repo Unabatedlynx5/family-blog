@@ -10,44 +10,230 @@ const user = Astro.locals.user;
 if (!user) {
   return Astro.redirect('/login');
 }
+
+const allowedEmails = ['admin@familyblog.com'];
+if (!allowedEmails.includes(user.email)) {
+  return Astro.redirect('/settings');
+}
 ---
 <html>
   <head>
     <BaseHead title="Admin" description="Admin Dashboard" />
   </head>
-  <body class="bg-white text-gray-900 antialiased">
+  <body class="bg-white text-gray-900 antialiased dark:bg-[#18191a] dark:text-[#e4e6eb]">
     <Header />
     <main class="w-[960px] max-w-[calc(100%-2em)] mx-auto p-3">
-      <h1 class="text-4xl font-bold mb-8">Admin - Create User</h1>
-      <form id="create-user" class="max-w-md space-y-4">
-        <label class="block">
-          <span class="text-gray-700">Email</span>
-          <input name="email" type="email" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring focus:ring-accent focus:ring-opacity-50 p-2 border">
-        </label>
-        <label class="block">
-          <span class="text-gray-700">Name</span>
-          <input name="name" type="text" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring focus:ring-accent focus:ring-opacity-50 p-2 border">
-        </label>
-        <label class="block">
-          <span class="text-gray-700">Password</span>
-          <input name="password" type="password" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring focus:ring-accent focus:ring-opacity-50 p-2 border">
-        </label>
-        <button type="submit" class="bg-accent text-white px-4 py-2 rounded hover:bg-accent/80 transition-colors">Create user</button>
-      </form>
-      <div id="result" class="mt-4 text-green-600 font-medium"></div>
+      <h1 class="text-4xl font-bold mb-8 dark:text-[#e4e6eb]">Admin Dashboard</h1>
+      
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+        <!-- Create User Section -->
+        <section class="lg:col-span-1 bg-white p-6 rounded-lg border border-gray-200 h-fit dark:bg-[#242526] dark:border-[#393a3b]">
+          <h2 class="text-2xl font-bold mb-4 dark:text-[#e4e6eb]">Create User</h2>
+          <form id="create-user" class="space-y-4">
+            <label class="block">
+              <span class="text-gray-700 dark:text-[#b0b3b8]">Email</span>
+              <input name="email" type="email" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring focus:ring-accent focus:ring-opacity-50 p-2 border dark:bg-[#3a3b3c] dark:border-[#393a3b] dark:text-[#e4e6eb]">
+            </label>
+            <label class="block">
+              <span class="text-gray-700 dark:text-[#b0b3b8]">Name</span>
+              <input name="name" type="text" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring focus:ring-accent focus:ring-opacity-50 p-2 border dark:bg-[#3a3b3c] dark:border-[#393a3b] dark:text-[#e4e6eb]">
+            </label>
+            <label class="block">
+              <span class="text-gray-700 dark:text-[#b0b3b8]">Password</span>
+              <input name="password" type="password" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring focus:ring-accent focus:ring-opacity-50 p-2 border dark:bg-[#3a3b3c] dark:border-[#393a3b] dark:text-[#e4e6eb]">
+            </label>
+            <button type="submit" class="bg-accent text-white px-4 py-2 rounded hover:bg-accent/80 transition-colors w-full">Create user</button>
+          </form>
+          <div id="create-result" class="mt-4 text-sm font-medium"></div>
+        </section>
+
+        <!-- Manage Users Section -->
+        <section class="lg:col-span-2 bg-white p-6 rounded-lg border border-gray-200 h-fit dark:bg-[#242526] dark:border-[#393a3b]">
+          <h2 class="text-2xl font-bold mb-4 dark:text-[#e4e6eb]">Manage Users</h2>
+          
+          <!-- Filters -->
+          <div class="flex gap-2 mb-4">
+            <input type="text" id="search-users" placeholder="Search name or email..." class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring focus:ring-accent focus:ring-opacity-50 p-2 border dark:bg-[#3a3b3c] dark:border-[#393a3b] dark:text-[#e4e6eb]">
+            <select id="filter-status" class="rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring focus:ring-accent focus:ring-opacity-50 p-2 border dark:bg-[#3a3b3c] dark:border-[#393a3b] dark:text-[#e4e6eb]">
+              <option value="">All Status</option>
+              <option value="1">Active</option>
+              <option value="0">Inactive</option>
+            </select>
+          </div>
+
+          <!-- User List -->
+          <div class="border rounded-md overflow-hidden dark:border-[#393a3b]">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-[#393a3b]">
+              <thead class="bg-gray-50 dark:bg-[#3a3b3c]">
+                <tr>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-[#b0b3b8]">User</th>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-[#b0b3b8]">Status</th>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-[#b0b3b8]">Created</th>
+                </tr>
+              </thead>
+              <tbody id="users-table-body" class="bg-white divide-y divide-gray-200 dark:bg-[#242526] dark:divide-[#393a3b]">
+                <!-- Users will be populated here -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Pagination -->
+          <div class="flex justify-between items-center mt-4">
+            <button id="prev-page" class="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-50 dark:border-[#393a3b] dark:text-[#e4e6eb] dark:hover:bg-[#3a3b3c]">Previous</button>
+            <span id="page-info" class="text-sm text-gray-600 dark:text-[#b0b3b8]">Page 1</span>
+            <button id="next-page" class="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-50 dark:border-[#393a3b] dark:text-[#e4e6eb] dark:hover:bg-[#3a3b3c]">Next</button>
+          </div>
+        </section>
+      </div>
     </main>
     <Footer />
 
     <script type="module" is:inline>
+      // Theme Management
+      const cachedTheme = localStorage.getItem('theme');
+      if (cachedTheme === 'dark' || (cachedTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+
+      // Create User Logic
       const form = document.getElementById('create-user');
-      form.addEventListener('submit', async (e)=>{
+      const createResult = document.getElementById('create-result');
+      
+      form.addEventListener('submit', async (e) => {
         e.preventDefault();
+        createResult.textContent = 'Creating...';
+        createResult.className = 'mt-4 text-sm font-medium text-gray-600';
+        
         const data = new FormData(form);
-        const body = { email: data.get('email'), name: data.get('name'), password: data.get('password') };
-        const res = await fetch('/api/admin/users', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-key': prompt('Enter ADMIN KEY') }, body: JSON.stringify(body) });
-        const j = await res.json();
-        if(res.ok) document.getElementById('result').textContent = 'User created: ' + j.id; else document.getElementById('result').textContent = j.error || 'Error';
+        const body = { 
+          email: data.get('email'), 
+          name: data.get('name'), 
+          password: data.get('password') 
+        };
+        
+        try {
+          const res = await fetch('/api/admin/users', { 
+            method: 'POST', 
+            headers: { 
+              'Content-Type': 'application/json'
+            }, 
+            body: JSON.stringify(body) 
+          });
+          
+          const j = await res.json();
+          
+          if (res.ok) {
+            createResult.textContent = 'User created successfully!';
+            createResult.className = 'mt-4 text-sm font-medium text-green-600';
+            form.reset();
+            fetchUsers(); // Refresh list
+          } else {
+            createResult.textContent = j.error || 'Error creating user';
+            createResult.className = 'mt-4 text-sm font-medium text-red-600';
+          }
+        } catch (err) {
+          createResult.textContent = 'Network error';
+          createResult.className = 'mt-4 text-sm font-medium text-red-600';
+        }
       });
+
+      // User List Logic
+      let currentPage = 1;
+      const limit = 10;
+      const searchInput = document.getElementById('search-users');
+      const filterStatus = document.getElementById('filter-status');
+      const tableBody = document.getElementById('users-table-body');
+      const prevBtn = document.getElementById('prev-page');
+      const nextBtn = document.getElementById('next-page');
+      const pageInfo = document.getElementById('page-info');
+
+      async function fetchUsers() {
+        const search = searchInput.value;
+        const status = filterStatus.value;
+        
+        const params = new URLSearchParams({
+          page: currentPage,
+          limit: limit,
+          search: search
+        });
+        if (status) params.append('is_active', status);
+
+        try {
+          const res = await fetch(`/api/admin/users?${params}`);
+          
+          if (res.status === 401 || res.status === 403) {
+             // Handle unauthorized
+             window.location.href = '/settings';
+             return;
+          }
+
+          const data = await res.json();
+          renderUsers(data.users);
+          updatePagination(data.pagination);
+        } catch (err) {
+          console.error('Failed to fetch users', err);
+        }
+      }
+
+      function renderUsers(users) {
+        tableBody.innerHTML = users.map(user => `
+          <tr>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <div class="flex items-center">
+                <div class="flex-shrink-0 h-10 w-10">
+                  ${user.avatar_url 
+                    ? `<img class="h-10 w-10 rounded-full object-cover" src="${user.avatar_url}" alt="">` 
+                    : `<div class="h-10 w-10 rounded-full bg-gray-200 dark:bg-[#3a3b3c] flex items-center justify-center text-gray-500 dark:text-[#b0b3b8] text-xl font-bold">${user.name ? user.name.charAt(0).toUpperCase() : '?'}</div>`
+                  }
+                </div>
+                <div class="ml-4">
+                  <div class="text-sm font-medium text-gray-900 dark:text-[#e4e6eb]">${user.name || 'No Name'}</div>
+                  <div class="text-sm text-gray-500 dark:text-[#b0b3b8]">${user.email}</div>
+                </div>
+              </div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.is_active ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'}">
+                ${user.is_active ? 'Active' : 'Inactive'}
+              </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-[#b0b3b8]">
+              ${new Date(user.created_at * 1000).toLocaleDateString()}
+            </td>
+          </tr>
+        `).join('');
+        
+        if (users.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="3" class="px-6 py-4 text-center text-gray-500 dark:text-[#b0b3b8]">No users found</td></tr>';
+        }
+      }
+
+      function updatePagination(pagination) {
+        pageInfo.textContent = `Page ${pagination.page} of ${pagination.totalPages || 1}`;
+        prevBtn.disabled = pagination.page <= 1;
+        nextBtn.disabled = pagination.page >= pagination.totalPages;
+      }
+
+      // Event Listeners
+      searchInput.addEventListener('input', () => { currentPage = 1; fetchUsers(); });
+      filterStatus.addEventListener('change', () => { currentPage = 1; fetchUsers(); });
+      
+      prevBtn.addEventListener('click', () => {
+        if (currentPage > 1) {
+          currentPage--;
+          fetchUsers();
+        }
+      });
+      
+      nextBtn.addEventListener('click', () => {
+        currentPage++;
+        fetchUsers();
+      });
+
+      // Initial load
+      fetchUsers();
     </script>
   </body>
 </html>

@@ -90,14 +90,15 @@ describe('Password Reset Flow', () => {
     // 1. Create a user
     const userReq = new Request('http://localhost/api/admin/users', {
       method: 'POST',
-      headers: { 'x-admin-key': 'admin-key' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         email: 'test@example.com',
         password: 'oldpassword',
         name: 'Test User'
       })
     });
-    await createUser({ request: userReq, locals });
+    const adminLocals = { ...locals, user: { email: 'admin@familyblog.com', sub: 'admin' } };
+    await createUser({ request: userReq, locals: adminLocals });
 
     // 2. Request reset link
     const req = new Request('http://localhost/api/auth/reset-password', {
@@ -120,14 +121,15 @@ describe('Password Reset Flow', () => {
     // 1. Create a user
     const userReq = new Request('http://localhost/api/admin/users', {
       method: 'POST',
-      headers: { 'x-admin-key': 'admin-key' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         email: 'test@example.com',
         password: 'oldpassword',
         name: 'Test User'
       })
     });
-    await createUser({ request: userReq, locals });
+    const adminLocals = { ...locals, user: { email: 'admin@familyblog.com', sub: 'admin' } };
+    await createUser({ request: userReq, locals: adminLocals });
 
     // 2. Request reset link to generate token
     const req1 = new Request('http://localhost/api/auth/reset-password', {
@@ -148,14 +150,15 @@ describe('Password Reset Flow', () => {
      // 1. Create a user
     const userReq = new Request('http://localhost/api/admin/users', {
       method: 'POST',
-      headers: { 'x-admin-key': 'admin-key' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         email: 'test@example.com',
         password: 'oldpassword',
         name: 'Test User'
       })
     });
-    const userRes = await createUser({ request: userReq, locals });
+    const adminLocals = { ...locals, user: { email: 'admin@familyblog.com', sub: 'admin' } };
+    const userRes = await createUser({ request: userReq, locals: adminLocals });
     const userJson = await userRes.json();
     const userId = userJson.id;
 
