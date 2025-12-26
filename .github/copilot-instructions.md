@@ -68,7 +68,7 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to be product
     - [x] Implement online status indicators.
   - [x] Add a toolbar for editing blog posts and make a user friendly way to add content and save it to markdown. (i.e. bold, underline, headings, links, images, etc.)
   - [x] Implement advanced editor features (smart cursor, button highlighting, list auto-increment, tab/backspace handling).
-  - [ ] Improve admin page UX for managing users (search, filter, pagination).
+  - [x] Improve admin page UX for managing users (search, filter, pagination).
   - [ ] Implement astro mdx features for blog posts (like syntax highlighting).
   - [ ] Add comment functionality to blog posts.
     - [ ] Add liking functionality to chat messages and comments.
@@ -95,6 +95,7 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to be product
     - [ ] Display user birthdays on the calendar.
     - [ ] Add functionality to create custom events (requires DB migration).
   - [ ] Add rate limiting to auth endpoints to mitigate brute-force attacks.
+  - [ ] Add delete user functionality to admin panel.
 
 
 References: README ([README.md](../README.md)), test guide ([tests/README.md](../tests/README.md)), `package.json` scripts ([package.json](../package.json)).

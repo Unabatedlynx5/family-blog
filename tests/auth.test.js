@@ -80,17 +80,23 @@ describe('Authentication Tests', () => {
     };
   });
 
-  it('should create an admin user', async () => {
+  it('should create a user when authenticated as admin', async () => {
+    // Mock logged-in admin user
+    mockLocals.user = {
+      sub: 'admin-id',
+      email: 'admin@familyblog.com',
+      name: 'Super Admin'
+    };
+
     const req = new Request('http://localhost/api/admin/users', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'x-admin-key': 'test-admin-key'
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        email: 'admin@example.com',
+        email: 'newuser@example.com',
         password: 'password123',
-        name: 'Admin User'
+        name: 'New User'
       })
     });
 
@@ -102,17 +108,42 @@ describe('Authentication Tests', () => {
     expect(data.ok).toBe(true);
 
     // Verify in DB
-    const user = env.DB.db.prepare('SELECT * FROM users WHERE email = ?').get('admin@example.com');
+    const user = env.DB.db.prepare('SELECT * FROM users WHERE email = ?').get('newuser@example.com');
     expect(user).toBeDefined();
-    expect(user.name).toBe('Admin User');
+    expect(user.name).toBe('New User');
   });
 
-  it('should fail to create user with invalid admin key', async () => {
+  it('should fail to create user without admin privileges', async () => {
+    // Mock non-admin user
+    mockLocals.user = {
+      sub: 'user-id',
+      email: 'user@example.com',
+      name: 'Regular User'
+    };
+
     const req = new Request('http://localhost/api/admin/users', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'x-admin-key': 'wrong-key'
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        email: 'hacker@example.com',
+        password: 'password123'
+      })
+    });
+
+    const res = await createUser({ request: req, locals: mockLocals });
+    expect(res.status).toBe(403);
+  });
+
+  it('should fail to create user when not logged in', async () => {
+    // No user in locals
+    mockLocals.user = null;
+
+    const req = new Request('http://localhost/api/admin/users', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         email: 'hacker@example.com',
