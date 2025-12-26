@@ -63,6 +63,8 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to be product
   - [ ] Implement user presence indicators in chat (online/offline).
     - [ ] Implement online status indicators.
   - [ ] Add a toolbar for editing blog posts and make a user friendly way to add markdown content. (i.e. bold, underline, headings, links, images, etc.)
+  - [ ] Implement rich text editor for blog posts with live preview.
+  - [ ] Improve admin page UX for managing users (search, filter, pagination).
   - [ ] Implement astro mdx features for blog posts (like syntax highlighting).
   - [ ] Add comment functionality to blog posts.
     - [ ] Add liking functionality to chat messages and comments.
