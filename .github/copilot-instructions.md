@@ -48,7 +48,7 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to be product
 
 - **Git & PR Workflow**:
   - **Branching**: Create a new branch for changes using the format `feature/<feature-name>`.
-  - **Pull Requests**: Automatically create a PR into `main` for these branches.
+  - **Pull Requests**: When you have finished your work, ask to create a PR into `main` for these branches.
   - **PR Summary**: Include a summary of files changed and features added in the PR description/comments.
 
 - **Current Focus & Todo**:
