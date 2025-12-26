@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 // @ts-ignore
 import bcrypt from 'bcryptjs';
+import { ADMIN_EMAIL } from '../../../consts';
 
 export const prerender = false;
 
@@ -16,8 +17,7 @@ export const GET: APIRoute = async ({ request, locals, url }) => {
   }
 
   // Check admin privileges
-  const allowedEmails = ['admin@familyblog.com'];
-  if (!allowedEmails.includes(locals.user.email)) {
+  if (locals.user.email !== ADMIN_EMAIL) {
     return new Response(
       JSON.stringify({ error: 'Forbidden' }), 
       { status: 403, headers: { 'Content-Type': 'application/json' } }
@@ -101,8 +101,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
   }
 
   // Check admin privileges
-  const allowedEmails = ['admin@familyblog.com'];
-  if (!allowedEmails.includes(locals.user.email)) {
+  if (locals.user.email !== ADMIN_EMAIL) {
     return new Response(
       JSON.stringify({ error: 'Forbidden' }), 
       { status: 403, headers: { 'Content-Type': 'application/json' } }
