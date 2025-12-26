@@ -46,7 +46,15 @@ if (env?.DB) {
         try{
           const res = await fetch('/api/members');
           if (!res.ok) return;
-          const data = await res.json();
+          
+          interface Member {
+            id: string;
+            name: string;
+            avatar_url: string | null;
+            last_seen: number;
+          }
+
+          const data = await res.json() as { members: Member[] };
           const listEl = document.getElementById('members-list');
           if (!listEl) return;
           const members = Array.isArray(data.members) ? data.members : [];

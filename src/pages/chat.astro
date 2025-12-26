@@ -163,7 +163,7 @@ if (!user) {
         try{
           const res = await fetch('/api/members');
           if (res.ok){
-            const data = await res.json();
+            const data = await res.json() as { active: number };
             const count = (data.active || 0);
             const el = document.getElementById('online-count');
             if (el) el.textContent = `Online: ${count}`;
