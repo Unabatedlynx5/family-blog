@@ -39,8 +39,15 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to be product
   4. Run `npm test` to validate.
 
 - **Database Migrations**:
-  - When applying a new migration file (e.g. `migrations/XXX_name.sql`), you MUST also record it in the `d1_migrations` table to track applied migrations.
-  - Example: `wrangler d1 execute family_blog_db --remote --command "INSERT INTO d1_migrations (name) VALUES ('XXX_name.sql');"`
+  - When applying a new migration file (e.g. `migrations/XXX_name.sql`), you MUST perform two steps:
+    1. Execute the migration file against the database.
+    2. Record the migration in the `d1_migrations` table to track it.
+  - **Command Pattern**:
+    ```bash
+    wrangler d1 execute family_blog_db --remote --file=migrations/XXX_name.sql && \
+    wrangler d1 execute family_blog_db --remote --command "INSERT INTO d1_migrations (name) VALUES ('XXX_name.sql');"
+    ```
+  - Always verify the migration was recorded: `wrangler d1 execute family_blog_db --remote --command "SELECT * FROM d1_migrations ORDER BY id DESC LIMIT 5"`
 
 - **Where to look first when debugging**:
   - Local dev: `npm run dev` (Astro) — console shows serverless function errors.
@@ -102,7 +109,10 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to be product
     - [ ] Display user birthdays on the calendar.
     - [ ] Add functionality to create custom events (requires DB migration).
   - [ ] Add rate limiting to auth endpoints to mitigate brute-force attacks.
-  - [ ] Add delete user functionality to admin panel.
+  - [x] Add delete user functionality to admin panel.
+    - [x] Implement DELETE endpoint in `src/pages/api/admin/users.ts`.
+    - [x] Add delete confirmation UI to admin dashboard.
+    - [x] Connect UI to delete endpoint.
 
 
 References: README ([README.md](../README.md)), test guide ([tests/README.md](../tests/README.md)), `package.json` scripts ([package.json](../package.json)).
