@@ -40,11 +40,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
           const { user_id, newToken } = result;
           
           // Get user details (email, name)
-          const dbUser = await env.DB.prepare('SELECT email, name FROM users WHERE id = ?').bind(user_id).first();
+          const dbUser = await env.DB.prepare('SELECT email, name, role FROM users WHERE id = ?').bind(user_id).first();
           
           if (dbUser) {
              const jwtSecret = await env.JWT_SECRET;
-             const newAccessToken = createAccessToken({ sub: user_id, email: dbUser.email, name: dbUser.name }, { JWT_SECRET: jwtSecret });
+             const newAccessToken = createAccessToken({ sub: user_id, email: dbUser.email, name: dbUser.name, role: dbUser.role }, { JWT_SECRET: jwtSecret });
              
              // Update cookies
              cookies.set('accessToken', newAccessToken, {
@@ -64,7 +64,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
              });
              
              // Set user for this request
-             user = { sub: user_id, email: dbUser.email, name: dbUser.name };
+             user = { sub: user_id, email: dbUser.email, name: dbUser.name, role: dbUser.role };
           }
         } else {
             // Invalid refresh token - clear cookies
@@ -83,6 +83,22 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   // Make user available to pages
   locals.user = user;
+
+  // Route Guard: Protect /admin routes
+  const url = new URL(context.request.url);
+  if (url.pathname.startsWith('/admin') || url.pathname.startsWith('/api/admin')) {
+    if (!locals.user || locals.user.role !== 'admin') {
+      // Return 403 for API, Redirect for Pages
+      if (url.pathname.startsWith('/api/')) {
+        return new Response(JSON.stringify({ error: 'Forbidden' }), { 
+          status: 403,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      } else {
+        return context.redirect('/');
+      }
+    }
+  }
 
   return next();
 });

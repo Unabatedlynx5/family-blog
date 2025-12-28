@@ -1,5 +1,4 @@
 import type { APIRoute } from 'astro';
-import { ADMIN_EMAIL } from '../../consts';
 
 export const prerender = false;
 
@@ -15,7 +14,7 @@ export const GET: APIRoute = async ({ locals }) => {
   }
 
   // Require admin privileges
-  if (locals.user.email !== ADMIN_EMAIL) {
+  if (locals.user.role !== 'admin') {
     return new Response(
       JSON.stringify({ error: 'Forbidden' }), 
       { status: 403, headers: { 'Content-Type': 'application/json' } }

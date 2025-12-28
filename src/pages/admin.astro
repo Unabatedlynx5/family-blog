@@ -2,18 +2,13 @@
 import BaseHead from '../components/BaseHead.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
-import { ADMIN_EMAIL } from '../consts';
 
 export const prerender = false;
 
-// Check authentication
+// Check authentication (Middleware handles admin role check)
 const user = Astro.locals.user;
 if (!user) {
   return Astro.redirect('/login');
-}
-
-if (user.email !== ADMIN_EMAIL) {
-  return Astro.redirect('/settings');
 }
 ---
 <html>

@@ -6,6 +6,7 @@ declare namespace App {
       sub: string;
       email: string;
       name: string;
+      role: string;
     } | null;
   }
 }

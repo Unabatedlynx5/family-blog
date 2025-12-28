@@ -66,6 +66,8 @@ describe('Authentication Tests', () => {
     // Apply migrations
     const migration = fs.readFileSync(path.resolve(__dirname, '../migrations/001_init.sql'), 'utf-8');
     sqlite.exec(migration);
+    const migrationRole = fs.readFileSync(path.resolve(__dirname, '../migrations/008_add_role.sql'), 'utf-8');
+    sqlite.exec(migrationRole);
 
     db = new MockD1Database(sqlite);
     
@@ -85,7 +87,8 @@ describe('Authentication Tests', () => {
     mockLocals.user = {
       sub: 'admin-id',
       email: 'admin@familyblog.com',
-      name: 'Super Admin'
+      name: 'Super Admin',
+      role: 'admin'
     };
 
     const req = new Request('http://localhost/api/admin/users', {
