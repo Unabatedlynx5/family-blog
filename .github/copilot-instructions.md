@@ -102,7 +102,10 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to be product
     - [ ] Display user birthdays on the calendar.
     - [ ] Add functionality to create custom events (requires DB migration).
   - [ ] Add rate limiting to auth endpoints to mitigate brute-force attacks.
-  - [ ] Add delete user functionality to admin panel.
+  - [x] Add delete user functionality to admin panel.
+    - [x] Implement DELETE endpoint in `src/pages/api/admin/users.ts`.
+    - [x] Add delete confirmation UI to admin dashboard.
+    - [x] Connect UI to delete endpoint.
 
 
 References: README ([README.md](../README.md)), test guide ([tests/README.md](../tests/README.md)), `package.json` scripts ([package.json](../package.json)).

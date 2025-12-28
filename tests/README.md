@@ -32,6 +32,13 @@ Tests for authentication functionality:
 - Password hashing
 - JWT token creation and verification
 
+### `tests/admin-users.test.js`
+Tests for admin user management:
+- Listing users with pagination and filtering
+- Creating new users
+- Deleting users
+- Admin authorization checks
+
 ### `tests/posts.test.js`
 Tests for post creation and retrieval:
 - Creating posts with authentication
