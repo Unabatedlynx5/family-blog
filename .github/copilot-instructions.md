@@ -38,8 +38,15 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to be product
   4. Run `npm test` to validate.
 
 - **Database Migrations**:
-  - When applying a new migration file (e.g. `migrations/XXX_name.sql`), you MUST also record it in the `d1_migrations` table to track applied migrations.
-  - Example: `wrangler d1 execute family_blog_db --remote --command "INSERT INTO d1_migrations (name) VALUES ('XXX_name.sql');"`
+  - When applying a new migration file (e.g. `migrations/XXX_name.sql`), you MUST perform two steps:
+    1. Execute the migration file against the database.
+    2. Record the migration in the `d1_migrations` table to track it.
+  - **Command Pattern**:
+    ```bash
+    wrangler d1 execute family_blog_db --remote --file=migrations/XXX_name.sql && \
+    wrangler d1 execute family_blog_db --remote --command "INSERT INTO d1_migrations (name) VALUES ('XXX_name.sql');"
+    ```
+  - Always verify the migration was recorded: `wrangler d1 execute family_blog_db --remote --command "SELECT * FROM d1_migrations ORDER BY id DESC LIMIT 5"`
 
 - **Where to look first when debugging**:
   - Local dev: `npm run dev` (Astro) — console shows serverless function errors.
