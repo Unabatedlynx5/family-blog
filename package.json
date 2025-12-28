@@ -46,6 +46,7 @@
     "deploy": "npm run build && wrangler deploy",
     "dev": "node scripts/auto_seed.js && astro dev",
     "preview": "astro build && wrangler dev",
+    "seed:admin": "node scripts/seed_admin.js admin@familyblog.com SecurePassword123",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"

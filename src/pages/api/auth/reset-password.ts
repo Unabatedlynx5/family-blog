@@ -44,9 +44,13 @@ export const POST: APIRoute = async ({ request, locals }) => {
         .run();
 
       // In a real app, send email here.
-      // For now, log the link.
-      const resetLink = `${new URL(request.url).origin}/reset-password?token=${token}`;
-      console.log(`[Password Reset] Link for ${email}: ${resetLink}`);
+      // For development only - DO NOT LOG TOKENS IN PRODUCTION
+      if (env.ENVIRONMENT === 'development') {
+        const resetLink = `${new URL(request.url).origin}/reset-password?token=${token}`;
+        console.log(`[DEV ONLY] Password reset link: ${resetLink}`);
+      } else {
+        console.log(`[Password Reset] Token generated for user ${user.id}`);
+      }
 
       return new Response(JSON.stringify({ message: 'If an account exists with that email, a reset link has been sent.' }), { 
         status: 200,

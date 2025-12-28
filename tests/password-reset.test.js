@@ -97,7 +97,7 @@ describe('Password Reset Flow', () => {
         name: 'Test User'
       })
     });
-    const adminLocals = { ...locals, user: { email: 'admin@familyblog.com', sub: 'admin' } };
+    const adminLocals = { ...locals, user: { email: 'admin@familyblog.com', sub: 'admin', role: 'admin' } };
     await createUser({ request: userReq, locals: adminLocals });
 
     // 2. Request reset link
@@ -128,7 +128,7 @@ describe('Password Reset Flow', () => {
         name: 'Test User'
       })
     });
-    const adminLocals = { ...locals, user: { email: 'admin@familyblog.com', sub: 'admin' } };
+    const adminLocals = { ...locals, user: { email: 'admin@familyblog.com', sub: 'admin', role: 'admin' } };
     await createUser({ request: userReq, locals: adminLocals });
 
     // 2. Request reset link to generate token
@@ -157,7 +157,7 @@ describe('Password Reset Flow', () => {
         name: 'Test User'
       })
     });
-    const adminLocals = { ...locals, user: { email: 'admin@familyblog.com', sub: 'admin' } };
+    const adminLocals = { ...locals, user: { email: 'admin@familyblog.com', sub: 'admin', role: 'admin' } };
     const userRes = await createUser({ request: userReq, locals: adminLocals });
     const userJson = await userRes.json();
     const userId = userJson.id;

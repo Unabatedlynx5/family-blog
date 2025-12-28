@@ -5,11 +5,30 @@ export const prerender = false;
 export const GET: APIRoute = async ({ locals }) => {
   const env = locals.runtime.env as any;
   
+  // Require authentication
+  if (!locals.user) {
+    return new Response(
+      JSON.stringify({ error: 'Unauthorized' }), 
+      { status: 401, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+
+  // Require admin privileges
+  if (locals.user.role !== 'admin') {
+    return new Response(
+      JSON.stringify({ error: 'Forbidden' }), 
+      { status: 403, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+  
   return new Response(
     JSON.stringify({ 
-      adminKeyPrefix: env.ADMIN_API_KEY ? env.ADMIN_API_KEY.substring(0, 10) + '...' : 'NOT SET',
-      jwtSecretPrefix: env.JWT_SECRET ? env.JWT_SECRET.substring(0, 10) + '...' : 'NOT SET',
-      message: 'Use these prefixes to verify your environment variables match'
+      hasAdminKey: !!env.ADMIN_API_KEY,
+      hasJWTSecret: !!env.JWT_SECRET,
+      hasDB: !!env.DB,
+      hasMediaBucket: !!env.MEDIA,
+      hasChatDO: !!env.GLOBAL_CHAT,
+      message: 'Environment check complete'
     }), 
     { status: 200, headers: { 'Content-Type': 'application/json' } }
   );

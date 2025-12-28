@@ -30,6 +30,7 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to be product
   - Server code expects Cloudflare bindings (D1, R2, Durable Objects). Update `wrangler.json` when adding bindings and re-run `npm run cf-typegen`.
   - Admin-only endpoints require `x-admin-key` header; authentication uses `Authorization: Bearer <token>` and HttpOnly cookies for refresh tokens.
   - Content collections: Markdown/MDX blog content lives under `src/content/blog/` and is consumed via `getCollection()`.
+  - **Security**: Always use parameterized queries (`.bind()`), validate all user input, return generic error messages to clients, log sensitive data only server-side. See [docs/SECURITY_QUICK_REFERENCE.md](../docs/SECURITY_QUICK_REFERENCE.md) for guidelines.
 
 - **When you change runtime bindings or env names**:
   1. Update `wrangler.json` bindings.
@@ -52,9 +53,15 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to be product
   - **PR Summary**: Include a summary of files changed and features added in the PR description/comments.
 
 - **Current Focus & Todo**:
+  - [x] Security audit completed (December 2025)
+    - [x] Fixed sensitive data exposure in debug endpoint
+    - [x] Fixed password reset token logging
+    - [x] Added rate limiting to login
+    - [x] Enhanced input validation across all endpoints
+    - [x] Created security utilities and documentation
   - [x] Implement password reset flow (email + token).
   - [x] Improve error handling and logging for Durable Object connections.
-  - [x] Improve test coverage for chat Durable Object (especially edge cases).
+  - [x] Improve test coverage for chat Durable Object (especially edge cases). 
   - [x] Improve test coverage for media upload and R2 interactions.
   - [x] Add end-to-end tests for key user flows (auth, posting, chat).
   - [x] Add "signing in..." after the user submits login form.

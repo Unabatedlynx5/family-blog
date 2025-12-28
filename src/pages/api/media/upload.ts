@@ -35,7 +35,17 @@ export const POST: APIRoute = async ({ request, locals }) => {
       });
     }
 
-    // Validate file size (max 5MB)
+    // Validate file extension matches MIME type
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    const validExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+    if (!ext || !validExtensions.includes(ext)) {
+      return new Response(JSON.stringify({ error: 'Invalid file extension' }), { 
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Validate size (max 5MB)
     const maxSize = 5 * 1024 * 1024; // 5MB
     if (file.size > maxSize) {
       return new Response(JSON.stringify({ error: 'File too large. Maximum size is 5MB.' }), { 
@@ -46,7 +56,6 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
     // Generate unique ID and R2 key
     const id = crypto.randomUUID();
-    const ext = file.name.split('.').pop();
     const r2Key = `media/${locals.user!.sub}/${id}.${ext}`;
 
     // Upload to R2

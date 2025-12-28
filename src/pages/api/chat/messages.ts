@@ -109,8 +109,25 @@ export const POST: APIRoute = async ({ request, locals, cookies }) => {
     }
 
     const { message } = body as { message: string };
-    if (!message || message.trim().length === 0) {
+    if (!message || typeof message !== 'string') {
+      return new Response(JSON.stringify({ error: 'Message must be a string' }), { 
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const trimmedMessage = message.trim();
+    
+    if (trimmedMessage.length === 0) {
       return new Response(JSON.stringify({ error: 'Message cannot be empty' }), { 
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Prevent excessively long messages (max 5000 chars)
+    if (trimmedMessage.length > 5000) {
+      return new Response(JSON.stringify({ error: 'Message too long (max 5000 characters)' }), { 
         status: 400,
         headers: { 'Content-Type': 'application/json' }
       });
@@ -135,7 +152,7 @@ export const POST: APIRoute = async ({ request, locals, cookies }) => {
     await env.DB.prepare(
       'INSERT INTO chat_messages (id, user_id, user_name, user_email, message, created_at) VALUES (?, ?, ?, ?, ?, ?)'
     )
-      .bind(id, user.id, user.name, user.email, message.trim(), now)
+      .bind(id, user.id, user.name, user.email, trimmedMessage, now)
       .run();
 
     return new Response(
@@ -146,7 +163,7 @@ export const POST: APIRoute = async ({ request, locals, cookies }) => {
           user_id: user.id,
           user_name: user.name,
           user_email: user.email,
-          message: message.trim(),
+          message: trimmedMessage,
           created_at: now
         }
       }), 

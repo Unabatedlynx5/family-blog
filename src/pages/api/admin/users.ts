@@ -1,7 +1,6 @@
 import type { APIRoute } from 'astro';
 // @ts-ignore
 import bcrypt from 'bcryptjs';
-import { ADMIN_EMAIL } from '../../../consts';
 
 export const prerender = false;
 
@@ -17,7 +16,7 @@ export const GET: APIRoute = async ({ request, locals, url }) => {
   }
 
   // Check admin privileges
-  if (locals.user.email !== ADMIN_EMAIL) {
+  if (locals.user.role !== 'admin') {
     return new Response(
       JSON.stringify({ error: 'Forbidden' }), 
       { status: 403, headers: { 'Content-Type': 'application/json' } }
@@ -83,7 +82,7 @@ export const GET: APIRoute = async ({ request, locals, url }) => {
   } catch (err) {
     console.error('Error listing users:', err);
     return new Response(
-      JSON.stringify({ error: 'Server error', details: err instanceof Error ? err.message : String(err) }), 
+      JSON.stringify({ error: 'Server error' }), 
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
@@ -101,7 +100,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
   }
 
   // Check admin privileges
-  if (locals.user.email !== ADMIN_EMAIL) {
+  if (locals.user.role !== 'admin') {
     return new Response(
       JSON.stringify({ error: 'Forbidden' }), 
       { status: 403, headers: { 'Content-Type': 'application/json' } }
@@ -155,7 +154,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
   } catch (err) {
     console.error('Error creating user:', err);
     return new Response(
-      JSON.stringify({ error: 'Server error', details: err instanceof Error ? err.message : String(err) }), 
+      JSON.stringify({ error: 'Server error' }), 
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }

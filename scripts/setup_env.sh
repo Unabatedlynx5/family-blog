@@ -1,53 +1,105 @@
 #!/bin/bash
 
-# Script to help set up environment variables for Cloudflare Workers
-# This generates secure secrets and provides instructions for setting them
+# Script to set up local development environment variables
+# This generates secure secrets for local development
 
 echo "=========================================="
-echo "Family Blog - Environment Setup"
+echo "Family Blog - Local Development Setup"
 echo "=========================================="
 echo ""
+
+# Check if .dev.vars already exists
+if [ -f .dev.vars ]; then
+    echo "⚠️  .dev.vars already exists!"
+    read -p "Do you want to overwrite it? (y/N): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "Cancelled. Existing .dev.vars preserved."
+        exit 0
+    fi
+fi
 
 # Generate secrets
+echo "Generating secure secrets..."
 JWT_SECRET=$(openssl rand -base64 32)
-ADMIN_API_KEY=$(openssl rand -base64 24)
+ADMIN_API_KEY=$(openssl rand -base64 32)
 
-echo "Generated secure secrets:"
+# Create .dev.vars file
+cat > .dev.vars << EOF
+# Development Environment Variables for Wrangler
+# Auto-generated on $(date)
+# DO NOT COMMIT THIS FILE
+
+# JWT Secret for token signing
+JWT_SECRET=$JWT_SECRET
+
+# Admin API Key for creating users
+ADMIN_API_KEY=$ADMIN_API_KEY
+
+# Environment flag
+ENVIRONMENT=development
+EOF
+
+echo "✅ Created .dev.vars"
+
+# Create .env file
+cat > .env << EOF
+# Development Environment Variables for Astro
+# Auto-generated on $(date)
+# DO NOT COMMIT THIS FILE
+
+# JWT Secret for token signing
+JWT_SECRET=$JWT_SECRET
+
+# Admin API Key for creating users
+ADMIN_API_KEY=$ADMIN_API_KEY
+
+# Environment flag
+ENVIRONMENT=development
+EOF
+
+echo "✅ Created .env"
 echo ""
-echo "JWT_SECRET=$JWT_SECRET"
-echo "ADMIN_API_KEY=$ADMIN_API_KEY"
+echo "=========================================="
+echo "✅ Local Development Setup Complete!"
+echo "=========================================="
+echo ""
+echo "Your secrets:"
+echo "  JWT_SECRET: ${JWT_SECRET:0:10}..."
+echo "  ADMIN_API_KEY: ${ADMIN_API_KEY:0:10}..."
+echo ""
+echo "Files created:"
+echo "  - .dev.vars (for wrangler dev)"
+echo "  - .env (for astro dev)"
 echo ""
 echo "=========================================="
 echo "NEXT STEPS:"
 echo "=========================================="
 echo ""
-echo "1. Go to Cloudflare Dashboard:"
-echo "   https://dash.cloudflare.com"
+echo "1. Start the development server:"
+echo "   npm run dev"
 echo ""
-echo "2. Navigate to:"
-echo "   Workers & Pages → family-blog → Settings → Variables"
+echo "2. OR use Wrangler for full Cloudflare environment:"
+echo "   npm run preview"
 echo ""
-echo "3. Click 'Add variable' and add these secrets:"
-echo "   - Name: JWT_SECRET"
-echo "     Value: $JWT_SECRET"
-echo "     Type: Secret (encrypt)"
-echo ""
-echo "   - Name: ADMIN_API_KEY"
-echo "     Value: $ADMIN_API_KEY"
-echo "     Type: Secret (encrypt)"
-echo ""
-echo "4. Click 'Save and Deploy'"
+echo "3. Create an admin user (after starting server):"
+echo "   npm run seed:admin"
 echo ""
 echo "=========================================="
-echo "CREATE ADMIN USER:"
+echo "PRODUCTION DEPLOYMENT:"
 echo "=========================================="
 echo ""
-echo "After setting the environment variables, create an admin user:"
+echo "For production, set these secrets in Cloudflare Dashboard:"
 echo ""
-echo "curl -X POST https://family-blog.frankrobertdenton.workers.dev/api/admin/users \\"
-echo "  -H 'Content-Type: application/json' \\"
-echo "  -H 'x-admin-key: $ADMIN_API_KEY' \\"
-echo "  -d '{"
+echo "1. Go to: https://dash.cloudflare.com"
+echo "2. Navigate to: Workers & Pages → family-blog → Settings → Variables"
+echo "3. Add these as encrypted secrets:"
+echo "   - JWT_SECRET (generate new with: openssl rand -base64 32)"
+echo "   - ADMIN_API_KEY (generate new with: openssl rand -base64 32)"
+echo "   - ENVIRONMENT=production"
+echo ""
+echo "⚠️  IMPORTANT: Use different secrets for production!"
+echo ""
 echo "    \"email\": \"admin@yourdomain.com\","
 echo "    \"password\": \"your-secure-password\","
 echo "    \"name\": \"Admin User\""
