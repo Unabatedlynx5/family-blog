@@ -67,10 +67,17 @@ describe('Integration Flow', () => {
   beforeEach(async () => {
     // Setup in-memory DB
     const sqlite = new Database(':memory:');
-    const migration = fs.readFileSync(path.resolve(__dirname, '../migrations/001_init.sql'), 'utf-8');
-    sqlite.exec(migration);
-    const migrationRole = fs.readFileSync(path.resolve(__dirname, '../migrations/008_add_role.sql'), 'utf-8');
-    sqlite.exec(migrationRole);
+    
+    // Apply migrations
+    const migrationsDir = path.resolve(__dirname, '../migrations');
+    const migrationFiles = fs.readdirSync(migrationsDir).sort();
+    for (const file of migrationFiles) {
+        if (file.endsWith('.sql')) {
+            const migration = fs.readFileSync(path.join(migrationsDir, file), 'utf-8');
+            sqlite.exec(migration);
+        }
+    }
+    
     db = new MockD1Database(sqlite);
     
     env = {

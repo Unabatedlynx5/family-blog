@@ -32,6 +32,11 @@
 				"name": "GLOBAL_CHAT",
 				"class_name": "GlobalChat",
 				"script_name": "family-blog-chat"
+			},
+			{
+				"name": "POST_ROOM",
+				"class_name": "PostRoom",
+				"script_name": "family-blog-chat"
 			}
 		]
 	},

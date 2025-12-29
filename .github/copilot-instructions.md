@@ -83,9 +83,8 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to be product
   - [x] Add a toolbar for editing blog posts and make a user friendly way to add content and save it to markdown. (i.e. bold, underline, headings, links, images, etc.)
   - [x] Implement advanced editor features (smart cursor, button highlighting, list auto-increment, tab/backspace handling).
   - [x] Improve admin page UX for managing users (search, filter, pagination).
-  - [ ] Implement astro mdx features for blog posts (like syntax highlighting).
-  - [ ] Add comment functionality to blog posts.
-    - [ ] Add liking functionality to chat messages and comments.
+  - [x] Add comment functionality to blog posts.
+    - [x] Add liking functionality to chat messages and comments. (Chat likes skipped for now)
   - [ ] Add pagination to feed/posts API endpoints.
   - [ ] Optimize D1 queries and add indexes where needed.
   - [ ] Implement caching for frequently accessed data (e.g., blog posts).
@@ -113,6 +112,7 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to be product
     - [x] Implement DELETE endpoint in `src/pages/api/admin/users.ts`.
     - [x] Add delete confirmation UI to admin dashboard.
     - [x] Connect UI to delete endpoint.
+  - [ ] Implement astro mdx features for blog posts (like syntax highlighting).
 
 
 References: README ([README.md](../README.md)), test guide ([tests/README.md](../tests/README.md)), `package.json` scripts ([package.json](../package.json)).

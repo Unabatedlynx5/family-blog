@@ -78,14 +78,21 @@ describe('Feed API Tests', () => {
   let db;
   let env;
   let mockLocals;
+  let userId;
 
   beforeEach(() => {
     // Setup in-memory DB
     const sqlite = new Database(':memory:');
     
     // Apply migrations
-    const migration = fs.readFileSync(path.resolve(__dirname, '../migrations/001_init.sql'), 'utf-8');
-    sqlite.exec(migration);
+    const migrationsDir = path.resolve(__dirname, '../migrations');
+    const migrationFiles = fs.readdirSync(migrationsDir).sort();
+    for (const file of migrationFiles) {
+        if (file.endsWith('.sql')) {
+            const migration = fs.readFileSync(path.join(migrationsDir, file), 'utf-8');
+            sqlite.exec(migration);
+        }
+    }
 
     db = new MockD1Database(sqlite);
     
@@ -93,22 +100,23 @@ describe('Feed API Tests', () => {
       DB: db
     };
 
+    userId = 'user-123';
     mockLocals = {
-      runtime: { env }
+      runtime: { env },
+      user: { sub: userId, email: 'user@example.com', name: 'Test User' }
     };
 
     // Insert some DB posts
-    const userId = 'user-123';
     sqlite.prepare('INSERT INTO users (id, email, password_hash, name, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?)')
       .run(userId, 'user@example.com', 'hash', 'Test User', 1, Date.now());
 
     // DB Post 1 (Newer than MD posts)
-    sqlite.prepare('INSERT INTO posts (id, user_id, content, created_at) VALUES (?, ?, ?, ?)')
-      .run('db-post-1', userId, 'DB Content 1', Math.floor(new Date('2023-01-03T12:00:00Z').getTime() / 1000));
+    sqlite.prepare('INSERT INTO posts (id, user_id, content, created_at, likes) VALUES (?, ?, ?, ?, ?)')
+      .run('db-post-1', userId, 'DB Content 1', Math.floor(new Date('2023-01-03T12:00:00Z').getTime() / 1000), '[]');
 
     // DB Post 2 (Older than MD Post 2, Newer than MD Post 1)
-    sqlite.prepare('INSERT INTO posts (id, user_id, content, created_at) VALUES (?, ?, ?, ?)')
-      .run('db-post-2', userId, 'DB Content 2', Math.floor(new Date('2023-01-01T15:00:00Z').getTime() / 1000));
+    sqlite.prepare('INSERT INTO posts (id, user_id, content, created_at, likes) VALUES (?, ?, ?, ?, ?)')
+      .run('db-post-2', userId, 'DB Content 2', Math.floor(new Date('2023-01-01T15:00:00Z').getTime() / 1000), JSON.stringify([userId]));
   });
 
   it('should return merged and sorted feed', async () => {
@@ -155,5 +163,23 @@ describe('Feed API Tests', () => {
     expect(data2.posts).toHaveLength(2);
     expect(data2.posts[0].id).toBe('db-post-2');
     expect(data2.posts[1].id).toBe('md-post-1');
+  });
+
+  it('should correctly parse likes', async () => {
+    const req = new Request('http://localhost/api/feed');
+    const url = new URL('http://localhost/api/feed');
+    
+    const res = await getFeed({ locals: mockLocals, url, request: req });
+    const data = await res.json();
+    
+    // db-post-1 has no likes
+    const post1 = data.posts.find(p => p.id === 'db-post-1');
+    expect(post1.like_count).toBe(0);
+    expect(post1.user_has_liked).toBe(0);
+
+    // db-post-2 has 1 like from current user
+    const post2 = data.posts.find(p => p.id === 'db-post-2');
+    expect(post2.like_count).toBe(1);
+    expect(post2.user_has_liked).toBe(1);
   });
 });

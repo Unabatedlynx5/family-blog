@@ -11,7 +11,16 @@ if (!user) {
 }
 ---
 <SocialLayout title="Feed">
-
+  <style>
+    @keyframes thumb-bounce {
+      0% { transform: scale(1) rotate(0deg); }
+      50% { transform: scale(1.2) rotate(-15deg) translateY(-2px); }
+      100% { transform: scale(1) rotate(0deg); }
+    }
+    .animate-thumb {
+      animation: thumb-bounce 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+  </style>
 
   <div id="composer" class="bg-white dark:bg-[#242526] p-4 rounded-lg shadow-sm mb-4">
     <div class="mb-4">
@@ -62,6 +71,11 @@ if (!user) {
 
         const avatarUrl = p.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name || 'User')}&background=random`;
 
+        const isLiked = p.user_has_liked;
+        const likeCount = p.like_count || 0;
+        const likeColorClass = isLiked ? 'text-blue-600' : 'text-[#65676b] dark:text-[#b0b3b8]';
+        const likeIconClass = isLiked ? 'fill-current' : 'stroke-current fill-none';
+
         el.innerHTML = `
           <div class="flex items-center mb-3">
             <img src="${avatarUrl}" class="w-10 h-10 rounded-full mr-3 object-cover border border-gray-200 dark:border-gray-700" alt="${p.name}" />
@@ -73,16 +87,115 @@ if (!user) {
           <div class="text-[#1c1e21] dark:text-[#e4e6eb] leading-relaxed prose dark:prose-invert max-w-none">${contentHtml}</div>
           ${mediaHtml}
           <div class="border-t border-[#e4e6eb] dark:border-[#3e4042] mt-4 pt-2 flex justify-around">
-            <div class="px-4 py-2 rounded cursor-pointer text-[#65676b] dark:text-[#b0b3b8] font-semibold flex items-center gap-2 hover:bg-[#f0f2f5] dark:hover:bg-[#3a3b3c]">
-                <span>👍</span> Like
-            </div>
-            <div class="px-4 py-2 rounded cursor-pointer text-[#65676b] dark:text-[#b0b3b8] font-semibold flex items-center gap-2 hover:bg-[#f0f2f5] dark:hover:bg-[#3a3b3c]">
+            <button class="like-btn px-4 py-2 rounded cursor-pointer font-semibold flex items-center gap-2 hover:bg-[#f0f2f5] dark:hover:bg-[#3a3b3c] border-none bg-transparent ${likeColorClass}" data-id="${p.id}" data-liked="${isLiked}">
+                <div class="thumb-icon-wrapper">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 like-icon ${likeIconClass}" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+                  </svg>
+                </div>
+                <span class="like-text">${isLiked ? 'Liked' : 'Like'}</span> 
+                <span class="like-count ml-1 bg-gray-200 dark:bg-gray-700 px-1.5 rounded-full text-xs ${likeCount > 0 ? '' : 'hidden'}">${likeCount}</span>
+            </button>
+            <button class="comment-btn px-4 py-2 rounded cursor-pointer text-[#65676b] dark:text-[#b0b3b8] font-semibold flex items-center gap-2 hover:bg-[#f0f2f5] dark:hover:bg-[#3a3b3c] border-none bg-transparent" data-id="${p.id}">
                 <span>💬</span> Comment
-            </div>
+            </button>
+          </div>
+          <div class="comments-container hidden mt-4 pt-4 border-t border-gray-100 dark:border-gray-800" id="comments-${p.id}">
+             <div class="text-center text-gray-500 text-sm">Comments coming soon...</div>
           </div>
         `;
         container.appendChild(el);
       }
+
+      // Attach event listeners
+      document.querySelectorAll('.like-btn').forEach(btn => {
+        btn.addEventListener('click', handleLike);
+      });
+      
+      document.querySelectorAll('.comment-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const id = e.currentTarget.dataset.id;
+            const container = document.getElementById(`comments-${id}`);
+            container.classList.toggle('hidden');
+        });
+      });
+    }
+
+    async function handleLike(e) {
+        const btn = e.currentTarget;
+        const id = btn.dataset.id;
+        const isLiked = btn.dataset.liked === 'true';
+        const iconSvg = btn.querySelector('.like-icon');
+        const wrapper = btn.querySelector('.thumb-icon-wrapper');
+        const textSpan = btn.querySelector('.like-text');
+        const countSpan = btn.querySelector('.like-count');
+        
+        // Optimistic update
+        const newLiked = !isLiked;
+        const currentCount = parseInt(countSpan.textContent) || 0;
+        const newCount = currentCount + (newLiked ? 1 : -1);
+        
+        btn.dataset.liked = newLiked;
+        
+        if (newLiked) {
+            btn.classList.remove('text-[#65676b]', 'dark:text-[#b0b3b8]');
+            btn.classList.add('text-blue-600');
+            iconSvg.classList.remove('stroke-current', 'fill-none');
+            iconSvg.classList.add('fill-current');
+            textSpan.textContent = 'Liked';
+            
+            // Trigger animation
+            wrapper.classList.remove('animate-thumb');
+            void wrapper.offsetWidth; // Trigger reflow
+            wrapper.classList.add('animate-thumb');
+        } else {
+            btn.classList.add('text-[#65676b]', 'dark:text-[#b0b3b8]');
+            btn.classList.remove('text-blue-600');
+            iconSvg.classList.add('stroke-current', 'fill-none');
+            iconSvg.classList.remove('fill-current');
+            textSpan.textContent = 'Like';
+            wrapper.classList.remove('animate-thumb');
+        }
+        
+        countSpan.textContent = newCount;
+        if (newCount > 0) {
+            countSpan.classList.remove('hidden');
+        } else {
+            countSpan.classList.add('hidden');
+        }
+
+        try {
+            const res = await fetch('/api/likes', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ target_id: id, target_type: 'post' })
+            });
+            
+            if (!res.ok) {
+                throw new Error('Failed to like');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Failed to like');
+            // Revert UI changes if needed
+            btn.dataset.liked = isLiked;
+            countSpan.textContent = currentCount;
+            if (isLiked) {
+                btn.classList.remove('text-[#65676b]', 'dark:text-[#b0b3b8]');
+                btn.classList.add('text-blue-600');
+                iconSvg.classList.remove('stroke-current', 'fill-none');
+                iconSvg.classList.add('fill-current');
+                textSpan.textContent = 'Liked';
+            } else {
+                btn.classList.add('text-[#65676b]', 'dark:text-[#b0b3b8]');
+                btn.classList.remove('text-blue-600');
+                iconSvg.classList.add('stroke-current', 'fill-none');
+                iconSvg.classList.remove('fill-current');
+                textSpan.textContent = 'Like';
+            }
+        }
     }
 
     document.getElementById('post').addEventListener('click', async ()=>{
@@ -158,5 +271,48 @@ if (!user) {
     });
 
     loadFeed();
+
+    // WebSocket Connection for Live Likes
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${wsProtocol}//${window.location.host}/api/feed/live`;
+    let ws;
+
+    function connectWebSocket() {
+      ws = new WebSocket(wsUrl);
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          
+          if (data.type === 'LIKE_UPDATE') {
+            updateLikeCount(data.postId, data.count);
+          }
+        } catch (e) {
+          console.error('Error parsing WS message:', e);
+        }
+      };
+
+      ws.onclose = () => {
+        // Reconnect after a delay
+        setTimeout(connectWebSocket, 3000);
+      };
+    }
+
+    function updateLikeCount(postId, count) {
+      const btn = document.querySelector(`.like-btn[data-id="${postId}"]`);
+      if (btn) {
+        const countSpan = btn.querySelector('.like-count');
+        if (countSpan) {
+          countSpan.textContent = count;
+          countSpan.classList.remove('hidden');
+          if (count === 0) {
+             countSpan.classList.add('hidden');
+          }
+        }
+      }
+    }
+
+    // Start connection
+    connectWebSocket();
   </script>
 </SocialLayout>

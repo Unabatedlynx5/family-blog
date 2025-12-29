@@ -32,7 +32,7 @@ async function seed() {
     execSync(`npx wrangler d1 execute family_blog_db --local --command "${sql}"`, { stdio: 'inherit' });
     console.log('Admin user created successfully.');
     
-  } catch (e) {
+  } catch (e: any) {
     console.error('Seeding warning:', e.message);
     // We don't exit with error because we want the dev server to start anyway
   }

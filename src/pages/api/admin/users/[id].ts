@@ -1,5 +1,4 @@
 import type { APIRoute } from 'astro';
-import { ADMIN_EMAIL } from '../../../../consts';
 
 export const prerender = false;
 
@@ -14,7 +13,7 @@ export const DELETE: APIRoute = async ({ params, locals }) => {
     });
   }
 
-  if (locals.user.email !== ADMIN_EMAIL) {
+  if (locals.user.role !== 'admin') {
     return new Response(JSON.stringify({ error: 'Forbidden' }), { 
       status: 403,
       headers: { 'Content-Type': 'application/json' }

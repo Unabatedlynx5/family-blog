@@ -25,7 +25,7 @@ export const SECURITY_HEADERS = {
  * @param {Response} response - The response to add headers to
  * @returns {Response} - Response with security headers
  */
-export function addSecurityHeaders(response) {
+export function addSecurityHeaders(response: Response): Response {
   const newHeaders = new Headers(response.headers);
   
   for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
@@ -45,7 +45,7 @@ export function addSecurityHeaders(response) {
  * @param {number} status - HTTP status code
  * @returns {Response}
  */
-export function secureJsonResponse(data, status = 200) {
+export function secureJsonResponse(data: any, status: number = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
     headers: {

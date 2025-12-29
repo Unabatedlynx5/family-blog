@@ -26,7 +26,10 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   if (accessToken) {
     const jwtSecret = await env.JWT_SECRET;
-    user = verifyAccessToken(accessToken, { JWT_SECRET: jwtSecret });
+    const decoded = verifyAccessToken(accessToken, { JWT_SECRET: jwtSecret });
+    if (decoded && typeof decoded !== 'string') {
+      user = decoded as any;
+    }
   }
 
   // 2. If no valid access token, try refresh token

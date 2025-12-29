@@ -30,7 +30,10 @@
   },
   "devDependencies": {
     "@astrojs/tailwind": "^6.0.2",
+    "@cloudflare/workers-types": "^4.20251229.0",
     "@types/bcryptjs": "^2.4.6",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/jsonwebtoken": "^9.0.10",
     "@vitest/coverage-v8": "^4.0.16",
     "better-sqlite3": "^11.0.0",
     "happy-dom": "^20.0.11",
@@ -44,9 +47,9 @@
     "cf-typegen": "wrangler types",
     "check": "astro build && tsc && wrangler deploy --dry-run",
     "deploy": "npm run build && wrangler deploy",
-    "dev": "node scripts/auto_seed.js && astro dev",
+    "dev": "npx tsx scripts/auto_seed.ts && astro dev",
     "preview": "astro build && wrangler dev",
-    "seed:admin": "node scripts/seed_admin.js admin@familyblog.com SecurePassword123",
+    "seed:admin": "npx tsx scripts/seed_admin.ts admin@familyblog.com SecurePassword123",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
