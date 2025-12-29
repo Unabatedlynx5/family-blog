@@ -3,7 +3,12 @@
  * Uses in-memory store (consider Cloudflare KV for production)
  */
 
-const requestCounts = new Map();
+interface RateLimitRecord {
+  count: number;
+  resetTime: number;
+}
+
+const requestCounts = new Map<string, RateLimitRecord>();
 
 /**
  * Check if request should be rate limited
@@ -12,7 +17,7 @@ const requestCounts = new Map();
  * @param {number} windowMs - Time window in milliseconds
  * @returns {boolean} - True if rate limited
  */
-export function isRateLimited(key, maxRequests = 5, windowMs = 15 * 60 * 1000) {
+export function isRateLimited(key: string, maxRequests: number = 5, windowMs: number = 15 * 60 * 1000): boolean {
   const now = Date.now();
   const record = requestCounts.get(key);
 
@@ -43,7 +48,7 @@ export function isRateLimited(key, maxRequests = 5, windowMs = 15 * 60 * 1000) {
  * @param {string} key - Unique identifier
  * @returns {object} - Rate limit info
  */
-export function getRateLimitInfo(key) {
+export function getRateLimitInfo(key: string): { remaining: number; reset: number } {
   const record = requestCounts.get(key);
   if (!record) {
     return { remaining: 5, reset: Date.now() + 15 * 60 * 1000 };
@@ -57,7 +62,7 @@ export function getRateLimitInfo(key) {
 /**
  * Clean up expired records (call periodically)
  */
-export function cleanupExpiredRecords() {
+export function cleanupExpiredRecords(): void {
   const now = Date.now();
   for (const [key, record] of requestCounts.entries()) {
     if (now > record.resetTime) {

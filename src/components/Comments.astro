@@ -1,0 +1,338 @@
+---
+interface Props {
+  postId: string;
+}
+
+const { postId } = Astro.props;
+---
+
+<style>
+  @keyframes thumb-bounce {
+    0% { transform: scale(1) rotate(0deg); }
+    50% { transform: scale(1.2) rotate(-15deg) translateY(-2px); }
+    100% { transform: scale(1) rotate(0deg); }
+  }
+  .animate-thumb {
+    animation: thumb-bounce 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+</style>
+
+<div class="comments-section mt-8 pt-8 border-t border-gray-200 dark:border-gray-700">
+  <h3 class="text-2xl font-bold mb-4 text-gray-900 dark:text-white">Comments</h3>
+  
+  <div id="comments-list" class="space-y-4 mb-6">
+    <!-- Comments will be loaded here -->
+    <div class="text-center text-gray-500">Loading comments...</div>
+  </div>
+
+  <form id="comment-form" class="mt-6">
+    <div class="mb-4">
+      <label for="comment-content" class="sr-only">Add a comment</label>
+      <textarea
+        id="comment-content"
+        name="content"
+        rows="3"
+        class="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        placeholder="Write a comment..."
+        required
+      ></textarea>
+    </div>
+    <div class="flex justify-end">
+      <button
+        type="submit"
+        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        Post Comment
+      </button>
+    </div>
+  </form>
+</div>
+
+<script define:vars={{ postId }}>
+  const commentsList = document.getElementById('comments-list');
+  const commentForm = document.getElementById('comment-form');
+  const submitButton = commentForm?.querySelector('button[type="submit"]');
+  const textarea = document.getElementById('comment-content');
+
+  // WebSocket Connection
+  const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${wsProtocol}//${window.location.host}/api/posts/${postId}/live`;
+  let ws;
+
+  function connectWebSocket() {
+    ws = new WebSocket(wsUrl);
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        
+        if (data.type === 'LIKE_UPDATE') {
+          if (data.targetType === 'comment') {
+            updateCommentLikeCount(data.targetId, data.count);
+          }
+        } else if (data.type === 'NEW_COMMENT') {
+          appendComment(data.comment);
+        }
+      } catch (e) {
+        console.error('Error parsing WS message:', e);
+      }
+    };
+
+    ws.onclose = () => {
+      // Reconnect after a delay
+      setTimeout(connectWebSocket, 3000);
+    };
+  }
+
+  // Start connection
+  connectWebSocket();
+
+  function updateCommentLikeCount(commentId, count) {
+    const btn = document.querySelector(`.like-btn[data-id="${commentId}"]`);
+    if (btn) {
+      const countSpan = btn.querySelector('.like-count');
+      if (countSpan) {
+        countSpan.textContent = count;
+      }
+    }
+  }
+
+  function appendComment(comment) {
+    // Remove "No comments" message if it exists
+    if (commentsList.innerHTML.includes('No comments yet')) {
+      commentsList.innerHTML = '';
+    }
+
+    const div = document.createElement('div');
+    div.innerHTML = `
+      <div class="flex space-x-3 mb-4 fade-in">
+        <div class="flex-shrink-0">
+          ${comment.avatar_url 
+            ? `<img class="h-10 w-10 rounded-full object-cover" src="${comment.avatar_url}" alt="${comment.name}" />`
+            : `<div class="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center text-gray-600 font-bold">${comment.name.charAt(0).toUpperCase()}</div>`
+          }
+        </div>
+        <div class="flex-grow">
+          <div class="bg-gray-100 dark:bg-gray-700 rounded-lg p-3">
+            <div class="font-semibold text-sm text-gray-900 dark:text-white mb-1">${comment.name}</div>
+            <div class="text-gray-800 dark:text-gray-200 whitespace-pre-wrap text-sm">${escapeHtml(comment.content)}</div>
+          </div>
+          <div class="flex items-center mt-1 ml-1 space-x-4">
+            <div class="text-xs text-gray-500">
+              ${new Date(comment.created_at * 1000).toLocaleDateString()} at ${new Date(comment.created_at * 1000).toLocaleTimeString()}
+            </div>
+            <button 
+              class="like-btn flex items-center space-x-1 text-xs font-medium transition-colors text-gray-500 hover:text-blue-600"
+              data-id="${comment.id}"
+              data-liked="false"
+            >
+              <div class="thumb-icon-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 stroke-current fill-none" viewBox="0 0 24 24" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+                </svg>
+              </div>
+              <span class="like-count">0</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // Add animation class
+    const style = document.createElement('style');
+    style.textContent = `
+      .fade-in { animation: fadeIn 0.5s ease-in; }
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    `;
+    document.head.appendChild(style);
+
+    commentsList.appendChild(div.firstElementChild);
+    
+    // Attach event listener to new button
+    const newBtn = commentsList.lastElementChild.querySelector('.like-btn');
+    newBtn.addEventListener('click', handleLike);
+  }
+
+  // Fetch comments
+  async function fetchComments() {
+    try {
+      const response = await fetch(`/api/posts/${postId}/comments`);
+      if (!response.ok) throw new Error('Failed to fetch comments');
+      
+      const data = await response.json();
+      renderComments(data.comments);
+    } catch (error) {
+      console.error('Error:', error);
+      commentsList.innerHTML = '<div class="text-red-500">Failed to load comments.</div>';
+    }
+  }
+
+  function renderComments(comments) {
+    if (comments.length === 0) {
+      commentsList.innerHTML = '<div class="text-gray-500 italic">No comments yet. Be the first to share your thoughts!</div>';
+      return;
+    }
+
+    commentsList.innerHTML = comments.map(comment => `
+      <div class="flex space-x-3">
+        <div class="flex-shrink-0">
+          ${comment.avatar_url 
+            ? `<img class="h-10 w-10 rounded-full object-cover" src="${comment.avatar_url}" alt="${comment.name}" />`
+            : `<div class="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center text-gray-600 font-bold">${comment.name.charAt(0).toUpperCase()}</div>`
+          }
+        </div>
+        <div class="flex-grow">
+          <div class="bg-gray-100 dark:bg-gray-700 rounded-lg p-3">
+            <div class="font-semibold text-sm text-gray-900 dark:text-white mb-1">${comment.name}</div>
+            <div class="text-gray-800 dark:text-gray-200 whitespace-pre-wrap text-sm">${escapeHtml(comment.content)}</div>
+          </div>
+          <div class="flex items-center mt-1 ml-1 space-x-4">
+            <div class="text-xs text-gray-500">
+              ${new Date(comment.created_at * 1000).toLocaleDateString()} at ${new Date(comment.created_at * 1000).toLocaleTimeString()}
+            </div>
+            <button 
+              class="like-btn flex items-center space-x-1 text-xs font-medium transition-colors ${comment.user_has_liked ? 'text-blue-600' : 'text-gray-500 hover:text-blue-600'}"
+              data-id="${comment.id}"
+              data-liked="${comment.user_has_liked ? 'true' : 'false'}"
+            >
+              <div class="thumb-icon-wrapper ${comment.user_has_liked ? 'animate-thumb' : ''}">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ${comment.user_has_liked ? 'fill-current' : 'stroke-current fill-none'}" viewBox="0 0 24 24" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+                </svg>
+              </div>
+              <span class="like-count">${comment.like_count || 0}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    `).join('');
+
+    // Attach event listeners to like buttons
+    document.querySelectorAll('.like-btn').forEach(btn => {
+      btn.addEventListener('click', handleLike);
+    });
+  }
+
+  async function handleLike(e) {
+    const btn = e.currentTarget;
+    const id = btn.dataset.id;
+    const isLiked = btn.dataset.liked === 'true';
+    const countSpan = btn.querySelector('.like-count');
+    const wrapper = btn.querySelector('.thumb-icon-wrapper');
+    const svg = btn.querySelector('svg');
+    
+    // Optimistic update
+    const newLiked = !isLiked;
+    const newCount = parseInt(countSpan.textContent) + (newLiked ? 1 : -1);
+    
+    btn.dataset.liked = newLiked;
+    countSpan.textContent = newCount;
+    
+    if (newLiked) {
+      btn.classList.remove('text-gray-500', 'hover:text-blue-600');
+      btn.classList.add('text-blue-600');
+      svg.classList.remove('stroke-current', 'fill-none');
+      svg.classList.add('fill-current');
+      
+      // Trigger animation
+      wrapper.classList.remove('animate-thumb');
+      void wrapper.offsetWidth; // Trigger reflow
+      wrapper.classList.add('animate-thumb');
+    } else {
+      btn.classList.add('text-gray-500', 'hover:text-blue-600');
+      btn.classList.remove('text-blue-600');
+      svg.classList.add('stroke-current', 'fill-none');
+      svg.classList.remove('fill-current');
+      wrapper.classList.remove('animate-thumb');
+    }
+
+    try {
+      const response = await fetch('/api/likes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ target_id: id, target_type: 'comment' }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to like');
+      }
+      
+      // Optional: verify state with response
+      const data = await response.json();
+      if (data.liked !== newLiked) {
+        // Revert if server disagrees (rare race condition)
+        // For now, just trust optimistic update or reload
+      }
+    } catch (error) {
+      console.error('Error liking comment:', error);
+      // Revert optimistic update
+      btn.dataset.liked = isLiked;
+      countSpan.textContent = parseInt(countSpan.textContent) - (newLiked ? 1 : -1);
+      
+      if (isLiked) {
+        btn.classList.remove('text-gray-500', 'hover:text-blue-600');
+        btn.classList.add('text-blue-600');
+        svg.classList.remove('stroke-current', 'fill-none');
+        svg.classList.add('fill-current');
+      } else {
+        btn.classList.add('text-gray-500', 'hover:text-blue-600');
+        btn.classList.remove('text-blue-600');
+        svg.classList.add('stroke-current', 'fill-none');
+        svg.classList.remove('fill-current');
+      }
+      
+      alert('Failed to update like. Please try again.');
+    }
+  }
+
+  function escapeHtml(unsafe) {
+    return unsafe
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  // Submit comment
+  commentForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const content = textarea.value.trim();
+    if (!content) return;
+
+    submitButton.disabled = true;
+    submitButton.textContent = 'Posting...';
+
+    try {
+      const response = await fetch(`/api/posts/${postId}/comments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ content }),
+      });
+
+      if (!response.ok) throw new Error('Failed to post comment');
+
+      const data = await response.json();
+      
+      // Clear form
+      textarea.value = '';
+      
+      // Refresh comments (or append new one)
+      await fetchComments();
+      
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Failed to post comment. Please try again.');
+    } finally {
+      submitButton.disabled = false;
+      submitButton.textContent = 'Post Comment';
+    }
+  });
+
+  // Initial load
+  fetchComments();
+</script>

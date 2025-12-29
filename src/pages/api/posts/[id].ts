@@ -21,6 +21,7 @@ export const GET: APIRoute = async ({ params, locals }) => {
         p.content,
         p.media_refs,
         p.created_at,
+        p.likes,
         u.name,
         u.email
       FROM posts p
@@ -33,6 +34,23 @@ export const GET: APIRoute = async ({ params, locals }) => {
         status: 404,
         headers: { 'Content-Type': 'application/json' }
       });
+    }
+
+    // Parse likes
+    let like_count = 0;
+    let user_has_liked = 0;
+    const currentUserId = locals.user?.sub;
+    
+    try {
+      const likesArray = JSON.parse(post.likes || '[]');
+      if (Array.isArray(likesArray)) {
+        like_count = likesArray.length;
+        if (currentUserId && likesArray.includes(currentUserId)) {
+          user_has_liked = 1;
+        }
+      }
+    } catch (e) {
+      // ignore parse error
     }
 
     const mediaRefs = (() => {
@@ -48,9 +66,10 @@ export const GET: APIRoute = async ({ params, locals }) => {
       : [];
 
     delete post.media_refs;
+    delete post.likes;
 
     return new Response(
-      JSON.stringify({ post: { ...post, media_urls } }), 
+      JSON.stringify({ post: { ...post, media_urls, like_count, user_has_liked } }), 
       { 
         status: 200,
         headers: { 'Content-Type': 'application/json' }

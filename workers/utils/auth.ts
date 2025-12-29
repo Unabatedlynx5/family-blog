@@ -6,20 +6,20 @@ import jwt from 'jsonwebtoken';
 // For local dev, you can use a default, but never commit real secrets
 const ACCESS_TTL = 15 * 60; // 15 minutes
 
-function getJWTSecret(env) {
+function getJWTSecret(env: any): string {
   return env?.JWT_SECRET || process.env.JWT_SECRET || 'dev-secret-change-me';
 }
 
-export async function verifyPassword(password, hash) {
+export async function verifyPassword(password: string, hash: string): Promise<boolean> {
   return bcrypt.compare(password, hash);
 }
 
-export function createAccessToken(payload, env) {
+export function createAccessToken(payload: object, env: any): string {
   const secret = getJWTSecret(env);
   return jwt.sign(payload, secret, { expiresIn: ACCESS_TTL });
 }
 
-export function verifyAccessToken(token, env) {
+export function verifyAccessToken(token: string, env: any): jwt.JwtPayload | string | null {
   try {
     const secret = getJWTSecret(env);
     const payload = jwt.verify(token, secret);
@@ -29,7 +29,7 @@ export function verifyAccessToken(token, env) {
   }
 }
 
-export async function createAndStoreRefreshToken(db, userId) {
+export async function createAndStoreRefreshToken(db: any, userId: string): Promise<string> {
   const token = randomUUID();
   const tokenHash = createHash('sha256').update(token).digest('hex');
   const now = Math.floor(Date.now() / 1000);
@@ -40,7 +40,7 @@ export async function createAndStoreRefreshToken(db, userId) {
   return token;
 }
 
-export async function rotateRefreshToken(db, token) {
+export async function rotateRefreshToken(db: any, token: string): Promise<{ user_id: string; newToken: string } | null> {
   const tokenHash = createHash('sha256').update(token).digest('hex');
   const row = await db.prepare('SELECT * FROM refresh_tokens WHERE token_hash = ? AND revoked = 0 AND expires_at > ?').bind(tokenHash, Math.floor(Date.now() / 1000)).first();
   if (!row) return null;

@@ -50,8 +50,14 @@ describe('Posts API Tests', () => {
     const sqlite = new Database(':memory:');
     
     // Apply migrations
-    const migration = fs.readFileSync(path.resolve(__dirname, '../migrations/001_init.sql'), 'utf-8');
-    sqlite.exec(migration);
+    const migrationsDir = path.resolve(__dirname, '../migrations');
+    const migrationFiles = fs.readdirSync(migrationsDir).sort();
+    for (const file of migrationFiles) {
+        if (file.endsWith('.sql')) {
+            const migration = fs.readFileSync(path.join(migrationsDir, file), 'utf-8');
+            sqlite.exec(migration);
+        }
+    }
 
     db = new MockD1Database(sqlite);
     
@@ -141,8 +147,8 @@ describe('Posts API Tests', () => {
   it('should get a post by id', async () => {
     // Create a post first
     const postId = 'post-123';
-    env.DB.db.prepare('INSERT INTO posts (id, user_id, content, created_at) VALUES (?, ?, ?, ?)')
-      .run(postId, userId, 'Test Content', Math.floor(Date.now() / 1000));
+    env.DB.db.prepare('INSERT INTO posts (id, user_id, content, created_at, likes) VALUES (?, ?, ?, ?, ?)')
+      .run(postId, userId, 'Test Content', Math.floor(Date.now() / 1000), JSON.stringify([userId]));
 
     const req = new Request(`http://localhost/api/posts/${postId}`);
     
@@ -153,6 +159,8 @@ describe('Posts API Tests', () => {
     expect(data.post.id).toBe(postId);
     expect(data.post.content).toBe('Test Content');
     expect(data.post.name).toBe('Test User'); // Joined from users table
+    expect(data.post.like_count).toBe(1);
+    expect(data.post.user_has_liked).toBe(1);
   });
 
   it('should return 404 for non-existent post', async () => {

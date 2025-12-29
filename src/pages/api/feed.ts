@@ -14,18 +14,29 @@ export const GET: APIRoute = async ({ locals, url }) => {
 
     // 1. Fetch Markdown posts
     const markdownPosts = await getCollection('blog');
-    const formattedMarkdownPosts = markdownPosts.map(post => ({
-      id: `md-${post.id}`,
-      user_id: 'admin', // Historical posts assumed to be admin
-      content: post.body, // Note: This is raw markdown. For rendered HTML, we'd need a different approach or render on client
-      created_at: Math.floor(post.data.pubDate.getTime() / 1000),
-      name: 'Family Blog', // Author name for historical posts
-      email: '',
-      source: 'markdown',
-      title: post.data.title,
-      slug: post.id,
-      media_url: post.data.heroImage || null
-    }));
+
+    // Note: Markdown posts don't support likes in the new schema (JSON array on posts table)
+    // unless we migrate them to DB or add a separate mechanism.
+    // For now, we'll just return 0 likes for them.
+
+    const formattedMarkdownPosts = markdownPosts.map(post => {
+      const id = `md-${post.id}`;
+      
+      return {
+        id,
+        user_id: 'admin', // Historical posts assumed to be admin
+        content: post.body, // Note: This is raw markdown. For rendered HTML, we'd need a different approach or render on client
+        created_at: Math.floor(post.data.pubDate.getTime() / 1000),
+        name: 'Family Blog', // Author name for historical posts
+        email: '',
+        source: 'markdown',
+        title: post.data.title,
+        slug: post.id,
+        media_url: post.data.heroImage || null,
+        like_count: 0,
+        user_has_liked: 0
+      };
+    });
 
     // 2. Fetch DB posts (fetch slightly more than limit to handle interleaving, or fetch all if dataset is small)
     // For a true merged pagination, we ideally need to query the DB with a limit, but since we are merging two sources,
@@ -56,6 +67,7 @@ export const GET: APIRoute = async ({ locals, url }) => {
     
     // Fetch enough DB posts to satisfy the current page without loading everything
     const dbFetchLimit = offset + limit;
+    const currentUserId = locals.user?.sub || '';
 
     const dbResult = await env.DB.prepare(`
       SELECT 
@@ -64,6 +76,7 @@ export const GET: APIRoute = async ({ locals, url }) => {
         p.content,
         p.created_at,
         p.media_refs,
+        p.likes,
         u.name,
         u.email,
         u.avatar_url
@@ -77,6 +90,21 @@ export const GET: APIRoute = async ({ locals, url }) => {
     const dbTotal = dbCountRow?.count || 0;
 
     const dbPosts = (dbResult.results || []).map((post: any) => {
+      // Parse likes
+      let like_count = 0;
+      let user_has_liked = 0;
+      try {
+        const likesArray = JSON.parse(post.likes || '[]');
+        if (Array.isArray(likesArray)) {
+          like_count = likesArray.length;
+          if (currentUserId && likesArray.includes(currentUserId)) {
+            user_has_liked = 1;
+          }
+        }
+      } catch (e) {
+        // ignore parse error
+      }
+
       // If we have media_refs, we might want to resolve them to URLs or just pass them through.
       // For now, let's just pass them through or pick the first one if the UI expects a single media_url.
       let media_url = null;
@@ -93,6 +121,8 @@ export const GET: APIRoute = async ({ locals, url }) => {
       
       return {
         ...post,
+        like_count,
+        user_has_liked,
         media_url,
         source: 'ui'
       };
