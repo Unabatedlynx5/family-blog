@@ -85,7 +85,7 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to be product
   - [x] Improve admin page UX for managing users (search, filter, pagination).
   - [x] Add comment functionality to blog posts.
     - [x] Add liking functionality to chat messages and comments. (Chat likes skipped for now)
-  - [ ] Add pagination to feed/posts API endpoints.
+  - [x] Add pagination to feed/posts API endpoints.
   - [ ] Optimize D1 queries and add indexes where needed.
   - [ ] Implement caching for frequently accessed data (e.g., blog posts).
   - [ ] Add blog button to social layout for easy access. 
