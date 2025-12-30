@@ -46,6 +46,11 @@ Tests for post creation and retrieval:
 - Authorization checks
 - Media references handling
 
+### `tests/posts-pagination.test.js`
+Tests for posts pagination:
+- Verifies GET /api/posts pagination logic
+- Checks limit, offset, and total counts
+
 ### `tests/media.test.js`
 Tests for media upload functionality:
 - File upload to R2

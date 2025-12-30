@@ -4,6 +4,44 @@ import { verifyAccessToken } from '../../../../workers/utils/auth.js';
 
 export const prerender = false;
 
+// List posts
+export const GET: APIRoute = async ({ request, locals, url }) => {
+  const env = locals.runtime.env as any;
+  
+  // Pagination
+  const page = parseInt(url.searchParams.get('page') || '1');
+  const limit = parseInt(url.searchParams.get('limit') || '20');
+  const offset = (page - 1) * limit;
+
+  try {
+    const posts = await env.DB.prepare(`
+      SELECT * FROM posts 
+      ORDER BY created_at DESC 
+      LIMIT ? OFFSET ?
+    `)
+    .bind(limit, offset)
+    .all();
+    
+    const count = await env.DB.prepare('SELECT COUNT(*) as count FROM posts').first();
+    
+    return new Response(JSON.stringify({
+      posts: posts.results,
+      pagination: {
+        page,
+        limit,
+        total: count.count,
+        totalPages: Math.ceil(count.count / limit)
+      }
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  } catch (e) {
+    console.error('Get posts error:', e);
+    return new Response(JSON.stringify({ error: 'Server error' }), { status: 500 });
+  }
+};
+
 // Create a new post
 export const POST: APIRoute = async ({ request, locals }) => {
   const env = locals.runtime.env as any;
