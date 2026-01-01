@@ -1,13 +1,43 @@
+/**
+ * Single post endpoint
+ * 
+ * Security Fixes Applied:
+ * - HIGH Issue #3: Proper TypeScript types (removed 'any')
+ * - UUID validation for post ID
+ */
+
 import type { APIRoute } from 'astro';
+import type { CloudflareEnv } from '../../../types/cloudflare';
+import { isValidUUID } from '../../../types/cloudflare';
 
 export const prerender = false;
 
+/** Post row from database */
+interface DBPostRow {
+  id: string;
+  user_id: string;
+  content: string;
+  media_refs: string | null;
+  created_at: number;
+  likes: string | null;
+  name: string;
+  email: string;
+}
+
 export const GET: APIRoute = async ({ params, locals }) => {
-  const env = locals.runtime.env as any;
+  const env = locals.runtime.env as CloudflareEnv;
   const postId = params.id;
 
   if (!postId) {
     return new Response(JSON.stringify({ error: 'Post ID required' }), { 
+      status: 400,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+  
+  // Security: Validate UUID format
+  if (!isValidUUID(postId)) {
+    return new Response(JSON.stringify({ error: 'Invalid post ID format' }), { 
       status: 400,
       headers: { 'Content-Type': 'application/json' }
     });
@@ -27,7 +57,7 @@ export const GET: APIRoute = async ({ params, locals }) => {
       FROM posts p
       LEFT JOIN users u ON p.user_id = u.id
       WHERE p.id = ?
-    `).bind(postId).first();
+    `).bind(postId).first<DBPostRow>();
 
     if (!post) {
       return new Response(JSON.stringify({ error: 'Post not found' }), { 
@@ -49,14 +79,14 @@ export const GET: APIRoute = async ({ params, locals }) => {
           user_has_liked = 1;
         }
       }
-    } catch (e) {
+    } catch {
       // ignore parse error
     }
 
     const mediaRefs = (() => {
       try {
         return post.media_refs ? JSON.parse(post.media_refs) : [];
-      } catch (_e) {
+      } catch {
         return [];
       }
     })();
@@ -65,11 +95,21 @@ export const GET: APIRoute = async ({ params, locals }) => {
       ? mediaRefs.map((id: string) => `/api/media/${id}`)
       : [];
 
-    delete post.media_refs;
-    delete post.likes;
+    // Build response object without mutating original
+    const responsePost = {
+      id: post.id,
+      user_id: post.user_id,
+      content: post.content,
+      created_at: post.created_at,
+      name: post.name,
+      email: post.email,
+      media_urls,
+      like_count,
+      user_has_liked
+    };
 
     return new Response(
-      JSON.stringify({ post: { ...post, media_urls, like_count, user_has_liked } }), 
+      JSON.stringify({ post: responsePost }), 
       { 
         status: 200,
         headers: { 'Content-Type': 'application/json' }

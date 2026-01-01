@@ -88,9 +88,11 @@ describe('Admin Users API', () => {
       ADMIN_API_KEY: 'test-admin-key'
     };
 
+    // Use valid UUID for admin user
+    const adminUserId = '550e8400-e29b-41d4-a716-446655440000';
     mockLocals = {
       runtime: { env },
-      user: { email: 'admin@familyblog.com', sub: 'admin-id', role: 'admin' }
+      user: { email: 'admin@familyblog.com', sub: adminUserId, role: 'admin' }
     };
 
     // Create some test users
@@ -197,8 +199,10 @@ describe('Admin Users API', () => {
     });
 
     it('should return 404 for non-existent user', async () => {
+      // Use valid UUID format for non-existent user
+      const nonExistentId = '550e8400-e29b-41d4-a716-446655449997';
       const res = await deleteUser({ 
-        params: { id: 'non-existent-id' }, 
+        params: { id: nonExistentId }, 
         locals: mockLocals 
       });
       
@@ -206,8 +210,10 @@ describe('Admin Users API', () => {
     });
 
     it('should prevent deleting yourself', async () => {
+      // Use the admin user's UUID
+      const adminUserId = '550e8400-e29b-41d4-a716-446655440000';
       const res = await deleteUser({ 
-        params: { id: 'admin-id' }, 
+        params: { id: adminUserId }, 
         locals: mockLocals 
       });
       
@@ -217,8 +223,9 @@ describe('Admin Users API', () => {
     });
 
     it('should require authentication', async () => {
+      const someUserId = '550e8400-e29b-41d4-a716-446655449996';
       const res = await deleteUser({ 
-        params: { id: 'some-id' }, 
+        params: { id: someUserId }, 
         locals: { runtime: mockLocals.runtime } 
       });
       
@@ -226,8 +233,9 @@ describe('Admin Users API', () => {
     });
 
     it('should require admin privileges', async () => {
+      const someUserId = '550e8400-e29b-41d4-a716-446655449995';
       const res = await deleteUser({ 
-        params: { id: 'some-id' }, 
+        params: { id: someUserId }, 
         locals: { 
           runtime: mockLocals.runtime,
           user: { email: 'regular@user.com', sub: 'regular-id' }

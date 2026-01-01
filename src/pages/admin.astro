@@ -115,6 +115,40 @@ if (!user) {
         document.documentElement.classList.remove('dark');
       }
 
+      // CSRF token management
+      let csrfToken = null;
+      let csrfExpires = 0;
+      
+      async function getCSRFToken() {
+        if (csrfToken && Date.now() < csrfExpires - 60000) {
+          return csrfToken;
+        }
+        try {
+          const res = await fetch('/api/csrf', { credentials: 'same-origin' });
+          if (res.ok) {
+            const data = await res.json();
+            csrfToken = data.token;
+            csrfExpires = data.expires;
+            return csrfToken;
+          }
+        } catch (e) {
+          console.error('Failed to get CSRF token:', e);
+        }
+        return null;
+      }
+      
+      async function fetchWithCSRF(url, options = {}) {
+        const method = (options.method || 'GET').toUpperCase();
+        if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+          const token = await getCSRFToken();
+          if (token) {
+            options.headers = { ...options.headers, 'X-CSRF-Token': token };
+          }
+        }
+        options.credentials = options.credentials || 'same-origin';
+        return fetch(url, options);
+      }
+
       // Create User Logic
       const form = document.getElementById('create-user');
       const createResult = document.getElementById('create-result');
@@ -132,7 +166,7 @@ if (!user) {
         };
         
         try {
-          const res = await fetch('/api/admin/users', { 
+          const res = await fetchWithCSRF('/api/admin/users', { 
             method: 'POST', 
             headers: { 
               'Content-Type': 'application/json'
@@ -257,7 +291,7 @@ if (!user) {
         confirmDeleteBtn.disabled = true;
 
         try {
-          const res = await fetch(`/api/admin/users/${userToDelete}`, {
+          const res = await fetchWithCSRF(`/api/admin/users/${userToDelete}`, {
             method: 'DELETE'
           });
 

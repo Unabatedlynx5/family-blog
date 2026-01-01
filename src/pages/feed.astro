@@ -47,6 +47,40 @@ if (!user) {
 
   <script type="module" is:inline>
     import { marked } from "https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js";
+    
+    // CSRF token management
+    let csrfToken = null;
+    let csrfExpires = 0;
+    
+    async function getCSRFToken() {
+      if (csrfToken && Date.now() < csrfExpires - 60000) {
+        return csrfToken;
+      }
+      try {
+        const res = await fetch('/api/csrf', { credentials: 'same-origin' });
+        if (res.ok) {
+          const data = await res.json();
+          csrfToken = data.token;
+          csrfExpires = data.expires;
+          return csrfToken;
+        }
+      } catch (e) {
+        console.error('Failed to get CSRF token:', e);
+      }
+      return null;
+    }
+    
+    async function fetchWithCSRF(url, options = {}) {
+      const method = (options.method || 'GET').toUpperCase();
+      if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+        const token = await getCSRFToken();
+        if (token) {
+          options.headers = { ...options.headers, 'X-CSRF-Token': token };
+        }
+      }
+      options.credentials = options.credentials || 'same-origin';
+      return fetch(url, options);
+    }
 
     let currentPage = 1;
     let isLoading = false;
@@ -196,7 +230,7 @@ if (!user) {
         }
 
         try {
-            const res = await fetch('/api/likes', {
+            const res = await fetchWithCSRF('/api/likes', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -235,8 +269,6 @@ if (!user) {
       const fileInput = document.getElementById('file');
       const file = fileInput.files[0];
       
-      const token = sessionStorage.getItem('accessToken');
-      
       let mediaId = null;
       
       if (file) {
@@ -244,11 +276,8 @@ if (!user) {
         formData.append('file', file);
         
         try {
-          const uploadRes = await fetch('/api/media/upload', {
+          const uploadRes = await fetchWithCSRF('/api/media/upload', {
             method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`
-            },
             body: formData
           });
           
@@ -281,11 +310,10 @@ if (!user) {
           payload.media_id = mediaId;
       }
 
-      const res = await fetch('/api/feed', {
+      const res = await fetchWithCSRF('/api/feed', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify(payload)
       });

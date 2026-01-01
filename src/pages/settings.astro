@@ -133,6 +133,40 @@ try {
         language?: string;
     }
 
+    // CSRF token management
+    let csrfToken: string | null = null;
+    let csrfExpires = 0;
+    
+    async function getCSRFToken(): Promise<string | null> {
+      if (csrfToken && Date.now() < csrfExpires - 60000) {
+        return csrfToken;
+      }
+      try {
+        const res = await fetch('/api/csrf', { credentials: 'same-origin' });
+        if (res.ok) {
+          const data = await res.json() as { token: string; expires: number };
+          csrfToken = data.token;
+          csrfExpires = data.expires;
+          return csrfToken;
+        }
+      } catch (e) {
+        console.error('Failed to get CSRF token:', e);
+      }
+      return null;
+    }
+    
+    async function fetchWithCSRF(url: string, options: RequestInit = {}): Promise<Response> {
+      const method = (options.method || 'GET').toUpperCase();
+      if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+        const token = await getCSRFToken();
+        if (token) {
+          options.headers = { ...options.headers, 'X-CSRF-Token': token } as HeadersInit;
+        }
+      }
+      options.credentials = options.credentials || 'same-origin';
+      return fetch(url, options);
+    }
+
     // Avatar Upload Logic
     const avatarInput = document.getElementById('avatar-input') as HTMLInputElement;
     const changeBtn = document.getElementById('change-avatar-btn');
@@ -184,9 +218,6 @@ try {
         }).toBlob(async (blob: Blob) => {
             const formData = new FormData();
             formData.append('file', blob, 'avatar.png');
-            
-            const token = sessionStorage.getItem('accessToken');
-            if (!token) return;
 
             try {
                 const btn = saveCrop as HTMLButtonElement;
@@ -194,9 +225,8 @@ try {
                 btn.innerText = 'Uploading...';
                 btn.disabled = true;
 
-                const res = await fetch('/api/user/avatar', {
+                const res = await fetchWithCSRF('/api/user/avatar', {
                     method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}` },
                     body: formData
                 });
 
@@ -234,13 +264,8 @@ try {
             applyTheme(cachedTheme);
         }
 
-        const token = sessionStorage.getItem('accessToken');
-        if (!token) return;
-
         try {
-            const res = await fetch('/api/settings', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const res = await fetchWithCSRF('/api/settings');
             if (res.ok) {
                 const settings = await res.json() as Settings;
                 const notifCheck = document.getElementById('notifications') as HTMLInputElement | null;
@@ -296,25 +321,21 @@ try {
         btn.innerText = 'Saving...';
         btn.disabled = true;
 
-        const token = sessionStorage.getItem('accessToken');
-
         try {
             // Save settings
-            const settingsRes = await fetch('/api/settings', {
+            const settingsRes = await fetchWithCSRF('/api/settings', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ theme, notifications_enabled, language })
             });
 
             // Save profile
-            const profileRes = await fetch('/api/user/profile', {
+            const profileRes = await fetchWithCSRF('/api/user/profile', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ name, birthday })
             });

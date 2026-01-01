@@ -1,42 +1,57 @@
+/**
+ * Likes API endpoint for posts
+ * 
+ * Security Fixes Applied:
+ * - HIGH Issue #3: Proper TypeScript types (removed 'any')
+ * - CRITICAL Issue #1: Rate limiting for likes
+ * - MEDIUM Issue #21: UUID validation for target_id
+ */
+
 import type { APIRoute } from 'astro';
-// @ts-ignore
-import { verifyAccessToken } from '../../../workers/utils/auth.js';
+import type { CloudflareEnv } from '../../types/cloudflare.ts';
+import { CONFIG, isValidUUID } from '../../types/cloudflare.ts';
+import { isRateLimited, getRateLimitInfo, createRateLimitResponse } from '../../../workers/utils/rate-limit.ts';
+import { requireAuth } from '../../../workers/utils/validation.ts';
 
 export const prerender = false;
 
-export const POST: APIRoute = async ({ request, locals, cookies }) => {
-  const env = locals.runtime.env as any;
-  
-  // Verify authentication
-  let token = cookies.get('accessToken')?.value;
-  if (!token) {
-    const authHeader = request.headers.get('Authorization');
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      token = authHeader.substring(7);
-    }
-  }
+/** Request body for like action */
+interface LikeRequestBody {
+  target_id: string;
+  target_type: string;
+}
 
-  if (!token) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
-      status: 401,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
+/** Database row for post likes */
+interface PostLikesRow {
+  likes: string | null;
+}
 
-  const jwtSecret = await env.JWT_SECRET;
-  const decoded = verifyAccessToken(token, { JWT_SECRET: jwtSecret });
+/** Allowed target types for likes */
+const ALLOWED_TARGET_TYPES = ['post'] as const;
+type TargetType = typeof ALLOWED_TARGET_TYPES[number];
+
+export const POST: APIRoute = async ({ request, locals }) => {
+  const env = locals.runtime.env as CloudflareEnv;
   
-  if (!decoded) {
-    return new Response(JSON.stringify({ error: 'Invalid token' }), { 
-      status: 401,
-      headers: { 'Content-Type': 'application/json' }
-    });
+  // Security: Check authentication via middleware
+  const authError = requireAuth(locals.user);
+  if (authError) return authError;
+  
+  const userId = locals.user!.sub;
+  
+  // Security: Rate limiting - 100 likes per hour per user
+  // CRITICAL Issue #1 Fix
+  const rateLimitKey = `like:${userId}`;
+  if (isRateLimited(rateLimitKey, CONFIG.rateLimit.likeMaxRequests, CONFIG.rateLimit.likeWindowMs)) {
+    const info = getRateLimitInfo(rateLimitKey, CONFIG.rateLimit.likeMaxRequests);
+    return createRateLimitResponse(info, 'Like limit reached. Please try again later.');
   }
 
   try {
-    const body = await request.json() as any;
+    const body = await request.json() as LikeRequestBody;
     const { target_id, target_type } = body;
 
+    // Validate required fields
     if (!target_id || !target_type) {
       return new Response(JSON.stringify({ error: 'Target ID and type required' }), { 
         status: 400,
@@ -44,8 +59,17 @@ export const POST: APIRoute = async ({ request, locals, cookies }) => {
       });
     }
 
-    const allowedTypes = ['post']; // Only posts for now
-    if (!allowedTypes.includes(target_type)) {
+    // Security: Validate UUID format
+    // MEDIUM Issue #21 Fix
+    if (!isValidUUID(target_id)) {
+      return new Response(JSON.stringify({ error: 'Invalid target ID format' }), { 
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Validate target type
+    if (!ALLOWED_TARGET_TYPES.includes(target_type as TargetType)) {
       return new Response(JSON.stringify({ error: 'Invalid target type' }), { 
         status: 400,
         headers: { 'Content-Type': 'application/json' }
@@ -53,7 +77,9 @@ export const POST: APIRoute = async ({ request, locals, cookies }) => {
     }
 
     // Fetch current likes array
-    const post = await env.DB.prepare('SELECT likes FROM posts WHERE id = ?').bind(target_id).first();
+    const post = await env.DB.prepare('SELECT likes FROM posts WHERE id = ?')
+      .bind(target_id)
+      .first<PostLikesRow>();
     
     if (!post) {
       return new Response(JSON.stringify({ error: 'Post not found' }), { 
@@ -66,17 +92,8 @@ export const POST: APIRoute = async ({ request, locals, cookies }) => {
     try {
       likesArray = JSON.parse(post.likes || '[]');
       if (!Array.isArray(likesArray)) likesArray = [];
-    } catch (e) {
+    } catch {
       likesArray = [];
-    }
-
-    const userId = typeof decoded === 'object' ? decoded.sub : undefined;
-    
-    if (!userId) {
-      return new Response(JSON.stringify({ error: 'Invalid token payload' }), { 
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
     }
 
     const index = likesArray.indexOf(userId);
@@ -100,13 +117,11 @@ export const POST: APIRoute = async ({ request, locals, cookies }) => {
       .bind(newLikesJson, target_id)
       .run();
 
-    // Notify Durable Object (Global Feed Room)
+    // Notify Durable Object (Global Feed Room) - fire and forget
     try {
-      // We use a single "FEED" room to broadcast updates for all posts
       const doId = env.POST_ROOM.idFromName('FEED');
       const stub = env.POST_ROOM.get(doId);
       
-      // Fire and forget
       stub.fetch('http://internal/update', {
         method: 'POST',
         body: JSON.stringify({

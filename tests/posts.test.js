@@ -145,8 +145,8 @@ describe('Posts API Tests', () => {
   });
 
   it('should get a post by id', async () => {
-    // Create a post first
-    const postId = 'post-123';
+    // Create a post first - use valid UUID
+    const postId = '550e8400-e29b-41d4-a716-446655440099';
     env.DB.db.prepare('INSERT INTO posts (id, user_id, content, created_at, likes) VALUES (?, ?, ?, ?, ?)')
       .run(postId, userId, 'Test Content', Math.floor(Date.now() / 1000), JSON.stringify([userId]));
 
@@ -164,9 +164,11 @@ describe('Posts API Tests', () => {
   });
 
   it('should return 404 for non-existent post', async () => {
-    const req = new Request('http://localhost/api/posts/non-existent');
+    // Use valid UUID format for non-existent post
+    const nonExistentId = '550e8400-e29b-41d4-a716-446655449999';
+    const req = new Request(`http://localhost/api/posts/${nonExistentId}`);
     
-    const res = await getPost({ params: { id: 'non-existent' }, locals: mockLocals, request: req });
+    const res = await getPost({ params: { id: nonExistentId }, locals: mockLocals, request: req });
     expect(res.status).toBe(404);
   });
 });

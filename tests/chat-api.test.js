@@ -114,7 +114,9 @@ describe('Chat API Tests', () => {
       get: () => undefined
     };
 
-    const res = await getMessages({ request: req, locals: mockLocals, cookies });
+    // Use mockLocals without user to simulate unauthenticated request
+    const unauthLocals = { runtime: mockLocals.runtime };
+    const res = await getMessages({ request: req, locals: unauthLocals, cookies });
     expect(res.status).toBe(401);
   });
 

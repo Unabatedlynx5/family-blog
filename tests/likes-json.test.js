@@ -54,9 +54,9 @@ describe('Likes JSON Logic', () => {
       );
     `);
 
-    // Insert a test post
+    // Insert a test post with valid UUID
     sqlite.prepare("INSERT INTO posts (id, user_id, content, likes, created_at) VALUES (?, ?, ?, ?, ?)")
-      .run('post-1', 'author-1', 'Hello World', '[]', Date.now());
+      .run('550e8400-e29b-41d4-a716-446655440000', 'author-1', 'Hello World', '[]', Date.now());
 
     db = new MockD1Database(sqlite);
     
@@ -86,15 +86,18 @@ describe('Likes JSON Logic', () => {
 
     return {
       request,
-      locals: { runtime: { env } },
+      locals: { 
+        runtime: { env },
+        user: { sub: userId, email: 'test@example.com', name: 'Test User' }
+      },
       cookies: { get: () => ({ value: token }) }
     };
   };
 
   it('should correctly handle multiple users liking and unliking (JSON array logic)', async () => {
-    const userA = 'user-A';
-    const userB = 'user-B';
-    const postId = 'post-1';
+    const userA = '550e8400-e29b-41d4-a716-446655440001';
+    const userB = '550e8400-e29b-41d4-a716-446655440002';
+    const postId = '550e8400-e29b-41d4-a716-446655440000';
 
     // 1. User A likes the post
     const ctxA = createRequest(userA, postId);
@@ -146,11 +149,12 @@ describe('Likes JSON Logic', () => {
   });
 
   it('should handle invalid JSON in likes column gracefully', async () => {
+    const postId = '550e8400-e29b-41d4-a716-446655440000';
     // Corrupt the likes column
-    env.DB.db.prepare("UPDATE posts SET likes = 'invalid-json' WHERE id = ?").run('post-1');
+    env.DB.db.prepare("UPDATE posts SET likes = 'invalid-json' WHERE id = ?").run(postId);
 
-    const userA = 'user-A';
-    const ctx = createRequest(userA, 'post-1');
+    const userA = '550e8400-e29b-41d4-a716-446655440001';
+    const ctx = createRequest(userA, postId);
     
     const res = await toggleLike(ctx);
     const data = await res.json();
@@ -160,13 +164,13 @@ describe('Likes JSON Logic', () => {
     expect(data.count).toBe(1);
 
     // Verify it reset to array with user
-    const post = env.DB.db.prepare('SELECT likes FROM posts WHERE id = ?').get('post-1');
+    const post = env.DB.db.prepare('SELECT likes FROM posts WHERE id = ?').get(postId);
     const likes = JSON.parse(post.likes);
     expect(likes).toEqual([userA]);
   });
 
   it('should return 404 for non-existent post', async () => {
-    const ctx = createRequest('user-A', 'non-existent-post');
+    const ctx = createRequest('550e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440099');
     const res = await toggleLike(ctx);
     
     expect(res.status).toBe(404);

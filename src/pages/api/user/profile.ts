@@ -1,21 +1,43 @@
+/**
+ * User profile update endpoint
+ * 
+ * Security Fixes Applied:
+ * - HIGH Issue #3: Proper TypeScript types (removed 'any')
+ * - Input validation for name and birthday
+ */
+
 import type { APIRoute } from 'astro';
+import type { CloudflareEnv } from '../../../types/cloudflare';
+import { requireAuth } from '../../../../workers/utils/validation.ts';
 
 export const prerender = false;
 
-export const POST: APIRoute = async ({ request, locals }) => {
-  const env = locals.runtime.env as any;
-  
-  if (!locals.user) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
-      status: 401,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
+/** Request body for profile update */
+interface ProfileUpdateBody {
+  name?: string;
+  birthday?: string;
+}
 
-  const userId = locals.user.sub;
+export const POST: APIRoute = async ({ request, locals }) => {
+  const env = locals.runtime.env as CloudflareEnv;
+  
+  // Security: Check authentication
+  const authError = requireAuth(locals.user);
+  if (authError) return authError;
+
+  const userId = locals.user!.sub;
 
   try {
-    const body = await request.json() as any;
+    let body: ProfileUpdateBody;
+    try {
+      body = await request.json() as ProfileUpdateBody;
+    } catch {
+      return new Response(JSON.stringify({ error: 'Invalid JSON' }), { 
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
     const { name, birthday } = body;
 
     // Validate name
@@ -42,7 +64,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
     }
 
     // Validate birthday format if provided (YYYY-MM-DD)
-    let validatedBirthday = null;
+    let validatedBirthday: string | null = null;
     if (birthday) {
       if (typeof birthday !== 'string') {
         return new Response(JSON.stringify({ error: 'Invalid birthday format' }), { 
@@ -77,6 +99,9 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
   } catch (err) {
     console.error('Profile update error:', err);
-    return new Response(JSON.stringify({ error: 'Server error' }), { status: 500 });
+    return new Response(JSON.stringify({ error: 'Server error' }), { 
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 };

@@ -1,25 +1,23 @@
+/**
+ * Debug endpoint - environment check
+ * 
+ * Security Fixes Applied:
+ * - HIGH Issue #3: Proper TypeScript types (removed 'any')
+ * - Admin-only access enforced
+ */
+
 import type { APIRoute } from 'astro';
+import type { CloudflareEnv } from '../../types/cloudflare';
+import { requireAdmin } from '../../../workers/utils/validation.ts';
 
 export const prerender = false;
 
 export const GET: APIRoute = async ({ locals }) => {
-  const env = locals.runtime.env as any;
+  const env = locals.runtime.env as CloudflareEnv;
   
-  // Require authentication
-  if (!locals.user) {
-    return new Response(
-      JSON.stringify({ error: 'Unauthorized' }), 
-      { status: 401, headers: { 'Content-Type': 'application/json' } }
-    );
-  }
-
-  // Require admin privileges
-  if (locals.user.role !== 'admin') {
-    return new Response(
-      JSON.stringify({ error: 'Forbidden' }), 
-      { status: 403, headers: { 'Content-Type': 'application/json' } }
-    );
-  }
+  // Security: Require admin privileges
+  const authError = requireAdmin(locals.user);
+  if (authError) return authError;
   
   return new Response(
     JSON.stringify({ 

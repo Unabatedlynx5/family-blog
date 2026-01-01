@@ -1,23 +1,35 @@
+/**
+ * Media fetch endpoint
+ * 
+ * Security Fixes Applied:
+ * - HIGH Issue #3: Proper TypeScript types (removed 'any')
+ * - UUID validation for media ID
+ */
+
 import type { APIRoute } from 'astro';
+import type { CloudflareEnv, DBMedia } from '../../../types/cloudflare';
+import { isValidUUID } from '../../../types/cloudflare';
 
 export const prerender = false;
 
 export const GET: APIRoute = async ({ params, locals }) => {
-  const env = locals.runtime.env as any;
+  const env = locals.runtime.env as CloudflareEnv;
   const mediaId = params.id;
 
   if (!mediaId) {
     return new Response('Media ID required', { status: 400 });
   }
+  
+  // Security: Validate UUID format
+  if (!isValidUUID(mediaId)) {
+    return new Response('Invalid media ID format', { status: 400 });
+  }
 
   try {
     // Get media metadata from DB
-    // Note: Schema uses mime_type, not content_type. And filename is not in the schema shown in migration 001.
-    // Let's check if filename exists or if we should just use mime_type.
-    // Based on migration 001, there is no filename column.
     const media = await env.DB.prepare(
       'SELECT id, mime_type, r2_key FROM media WHERE id = ?'
-    ).bind(mediaId).first();
+    ).bind(mediaId).first<{ id: string; mime_type: string; r2_key: string }>();
 
     if (!media) {
       return new Response('Media not found', { status: 404 });

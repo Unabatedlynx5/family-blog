@@ -1,11 +1,25 @@
+/**
+ * Token refresh endpoint
+ * 
+ * Security Fixes Applied:
+ * - HIGH Issue #3: Proper TypeScript types (removed 'any')
+ */
+
 import type { APIRoute } from 'astro';
-// @ts-ignore
-import { rotateRefreshToken, createAccessToken } from '../../../../workers/utils/auth.js';
+import { rotateRefreshToken, createAccessToken } from '../../../../workers/utils/auth.ts';
+import type { CloudflareEnv } from '../../../types/cloudflare';
 
 export const prerender = false;
 
+/** User row for refresh */
+interface RefreshUserRow {
+  email: string;
+  name: string;
+  role: string;
+}
+
 export const POST: APIRoute = async ({ cookies, locals }) => {
-  const env = locals.runtime.env as any;
+  const env = locals.runtime.env as CloudflareEnv;
   
   const refreshToken = cookies.get('refresh')?.value;
 
@@ -34,7 +48,9 @@ export const POST: APIRoute = async ({ cookies, locals }) => {
     const { user_id, newToken } = result;
 
     // Get user email for access token
-    const user = await env.DB.prepare('SELECT email, name, role FROM users WHERE id = ?').bind(user_id).first();
+    const user = await env.DB.prepare('SELECT email, name, role FROM users WHERE id = ?')
+      .bind(user_id)
+      .first<RefreshUserRow>();
     
     if (!user) {
       return new Response(JSON.stringify({ error: 'User not found' }), { 

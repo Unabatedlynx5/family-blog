@@ -1,25 +1,40 @@
+/**
+ * Login endpoint
+ * 
+ * Security Fixes Applied:
+ * - HIGH Issue #3: Proper TypeScript types (removed 'any')
+ * - Existing rate limiting preserved
+ * - Input validation for email
+ */
+
 import type { APIRoute } from 'astro';
-// @ts-ignore
-import { verifyPassword, createAccessToken, createAndStoreRefreshToken } from '../../../../workers/utils/auth.js';
-// @ts-ignore
-import { isRateLimited, getRateLimitInfo } from '../../../../workers/utils/rate-limit.js';
+import { verifyPassword, createAccessToken, createAndStoreRefreshToken } from '../../../../workers/utils/auth.ts';
+import { isRateLimited, getRateLimitInfo } from '../../../../workers/utils/rate-limit.ts';
+import type { CloudflareEnv, DBUser } from '../../../types/cloudflare';
+import { isValidEmail, CONFIG } from '../../../types/cloudflare';
 
 export const prerender = false;
 
+/** Request body for login */
+interface LoginBody {
+  email: string;
+  password: string;
+}
+
 export const POST: APIRoute = async ({ request, locals, cookies, clientAddress }) => {
-  const env = locals.runtime.env as any;
+  const env = locals.runtime.env as CloudflareEnv;
   
-  let body;
+  let body: LoginBody;
   try {
-    body = await request.json();
-  } catch (e) {
+    body = await request.json() as LoginBody;
+  } catch {
     return new Response(JSON.stringify({ error: 'Invalid JSON' }), { 
       status: 400,
       headers: { 'Content-Type': 'application/json' }
     });
   }
 
-  const { email, password } = body as { email: string; password: string };
+  const { email, password } = body;
 
   if (!email || !password) {
     return new Response(JSON.stringify({ error: 'Missing credentials' }), { 
@@ -27,9 +42,17 @@ export const POST: APIRoute = async ({ request, locals, cookies, clientAddress }
       headers: { 'Content-Type': 'application/json' }
     });
   }
+  
+  // Security: Validate email format
+  if (!isValidEmail(email)) {
+    return new Response(JSON.stringify({ error: 'Invalid credentials' }), { 
+      status: 401,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
 
   // Rate limiting: 5 attempts per 15 minutes per IP or email
-  const rateLimitKey = `login:${clientAddress || 'unknown'}:${email}`;
+  const rateLimitKey = `login:${clientAddress || 'unknown'}:${email.toLowerCase()}`;
   if (isRateLimited(rateLimitKey, 5, 15 * 60 * 1000)) {
     const info = getRateLimitInfo(rateLimitKey) as { remaining: number; reset: number };
     return new Response(JSON.stringify({ 
@@ -46,8 +69,8 @@ export const POST: APIRoute = async ({ request, locals, cookies, clientAddress }
 
   try {
     const user = await env.DB.prepare('SELECT * FROM users WHERE email = ? AND is_active = 1')
-      .bind(email)
-      .first();
+      .bind(email.toLowerCase().trim())
+      .first<DBUser>();
       
     if (!user) {
       return new Response(JSON.stringify({ error: 'Invalid credentials' }), { 

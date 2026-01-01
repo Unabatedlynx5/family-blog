@@ -1,10 +1,18 @@
+/**
+ * Logout endpoint
+ * 
+ * Security Fixes Applied:
+ * - HIGH Issue #3: Proper TypeScript types (removed 'any')
+ */
+
 import type { APIRoute } from 'astro';
 import { createHash } from 'crypto';
+import type { CloudflareEnv } from '../../../types/cloudflare';
 
 export const prerender = false;
 
 export const POST: APIRoute = async ({ cookies, locals }) => {
-  const env = locals.runtime?.env as any;
+  const env = locals.runtime?.env as CloudflareEnv | undefined;
   const refreshToken = cookies.get('refresh')?.value;
 
   if (refreshToken && env?.DB) {

@@ -149,8 +149,8 @@ describe('Media API Tests', () => {
   });
 
   it('should get media by id', async () => {
-    // Manually insert media
-    const mediaId = 'media-123';
+    // Manually insert media - use valid UUID
+    const mediaId = '550e8400-e29b-41d4-a716-446655440088';
     const r2Key = `media/${userId}/${mediaId}.png`;
     const now = Math.floor(Date.now() / 1000);
     
@@ -167,9 +167,11 @@ describe('Media API Tests', () => {
   });
 
   it('should return 404 for non-existent media', async () => {
-    const req = new Request('http://localhost/api/media/non-existent');
+    // Use valid UUID format for non-existent media
+    const nonExistentId = '550e8400-e29b-41d4-a716-446655449998';
+    const req = new Request(`http://localhost/api/media/${nonExistentId}`);
     
-    const res = await getMedia({ params: { id: 'non-existent' }, locals: mockLocals, request: req });
+    const res = await getMedia({ params: { id: nonExistentId }, locals: mockLocals, request: req });
     expect(res.status).toBe(404);
   });
 

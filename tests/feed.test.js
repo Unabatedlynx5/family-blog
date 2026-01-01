@@ -72,6 +72,18 @@ class MockD1Database {
       }
     };
   }
+  
+  // LOW Issue #33 Fix: Add batch method for query batching
+  async batch(statements) {
+    const results = [];
+    for (const statement of statements) {
+      // Each statement from prepare().bind() returns an object with first/run/all
+      // We need to execute it and get results
+      const result = await statement.all();
+      results.push(result);
+    }
+    return results;
+  }
 }
 
 describe('Feed API Tests', () => {

@@ -79,13 +79,13 @@ describe('Live Updates & Durable Object Tests', () => {
       POST_ROOM: mockPostRoom
     };
 
-    userId = 'user-123';
+    userId = '550e8400-e29b-41d4-a716-446655440001';
     sqlite.prepare('INSERT INTO users (id, email, password_hash, name, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?)')
       .run(userId, 'user@example.com', 'hash', 'Test User', 1, Date.now());
 
-    // Create a post for testing likes
+    // Create a post for testing likes with valid UUID
     sqlite.prepare('INSERT INTO posts (id, user_id, content, created_at, likes) VALUES (?, ?, ?, ?, ?)')
-      .run('post-1', userId, 'Test Post', Date.now(), '[]');
+      .run('550e8400-e29b-41d4-a716-446655440000', userId, 'Test Post', Date.now(), '[]');
 
     mockLocals = {
       runtime: { env },
@@ -111,9 +111,10 @@ describe('Live Updates & Durable Object Tests', () => {
 
   describe('POST /api/likes (Live Updates)', () => {
     it('should notify DO when a post is liked', async () => {
+      const postId = '550e8400-e29b-41d4-a716-446655440000';
       const req = new Request('http://localhost/api/likes', {
         method: 'POST',
-        body: JSON.stringify({ target_id: 'post-1', target_type: 'post' })
+        body: JSON.stringify({ target_id: postId, target_type: 'post' })
       });
       
       const cookies = {
@@ -132,7 +133,7 @@ describe('Live Updates & Durable Object Tests', () => {
       // Check the body sent to the DO
       const body = JSON.parse(fetchCall[1].body);
       expect(body.type).toBe('LIKE_UPDATE');
-      expect(body.postId).toBe('post-1');
+      expect(body.postId).toBe(postId);
       expect(body.count).toBe(1);
     });
   });

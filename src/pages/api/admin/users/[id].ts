@@ -1,24 +1,25 @@
+/**
+ * Admin user delete endpoint
+ * 
+ * Security Fixes Applied:
+ * - HIGH Issue #3: Proper TypeScript types (removed 'any')
+ * - UUID validation for user ID
+ */
+
 import type { APIRoute } from 'astro';
+import type { CloudflareEnv } from '../../../../types/cloudflare';
+import { isValidUUID } from '../../../../types/cloudflare';
+import { requireAdmin } from '../../../../../workers/utils/validation';
 
 export const prerender = false;
 
 export const DELETE: APIRoute = async ({ params, locals }) => {
-  const env = locals.runtime.env as any;
+  const env = locals.runtime.env as CloudflareEnv;
   const { id } = params;
 
-  if (!locals.user) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
-      status: 401,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
-
-  if (locals.user.role !== 'admin') {
-    return new Response(JSON.stringify({ error: 'Forbidden' }), { 
-      status: 403,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
+  // Security: Check admin privileges
+  const authError = requireAdmin(locals.user);
+  if (authError) return authError;
 
   if (!id) {
     return new Response(JSON.stringify({ error: 'Missing user ID' }), { 
@@ -26,9 +27,17 @@ export const DELETE: APIRoute = async ({ params, locals }) => {
       headers: { 'Content-Type': 'application/json' }
     });
   }
+  
+  // Security: Validate UUID format
+  if (!isValidUUID(id)) {
+    return new Response(JSON.stringify({ error: 'Invalid user ID format' }), { 
+      status: 400,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
 
   // Prevent deleting self
-  if (id === locals.user.sub) {
+  if (id === locals.user!.sub) {
     return new Response(JSON.stringify({ error: 'Cannot delete yourself' }), { 
       status: 400,
       headers: { 'Content-Type': 'application/json' }

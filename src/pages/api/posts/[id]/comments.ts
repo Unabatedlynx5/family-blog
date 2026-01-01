@@ -1,19 +1,47 @@
+/**
+ * Comments API endpoint for blog posts
+ * 
+ * Security Fixes Applied:
+ * - HIGH Issue #3: Proper TypeScript types (removed 'any')
+ * - HIGH Issue #9: Comment content validation with length limits
+ * - CRITICAL Issue #1: Rate limiting for comment creation
+ * - MEDIUM Issue #21: UUID validation for post ID
+ */
+
 import type { APIRoute } from 'astro';
-// @ts-ignore
-import { verifyAccessToken } from '../../../../../workers/utils/auth.js';
+import type { CloudflareEnv } from '../../../../types/cloudflare';
+import { CONFIG, isValidUUID } from '../../../../types/cloudflare';
+import { verifyAccessToken } from '../../../../../workers/utils/auth.ts';
+import { isRateLimited, getRateLimitInfo, createRateLimitResponse } from '../../../../../workers/utils/rate-limit.ts';
+import { requireAuth, validateCommentContent, validatePostId } from '../../../../../workers/utils/validation.ts';
 
 export const prerender = false;
 
-export const GET: APIRoute = async ({ params, locals, request }) => {
-  const env = locals.runtime.env as any;
+/** Comment data returned by API */
+interface CommentData {
+  id: string;
+  post_id: string;
+  content: string;
+  created_at: number;
+  user_id: string;
+  name: string;
+  avatar_url: string | null;
+  like_count: number;
+  user_has_liked: number;
+}
+
+/** Request body for creating a comment */
+interface CreateCommentBody {
+  content: string;
+}
+
+export const GET: APIRoute = async ({ params, locals }) => {
+  const env = locals.runtime.env as CloudflareEnv;
   const { id } = params;
 
-  if (!id) {
-    return new Response(JSON.stringify({ error: 'Post ID required' }), { 
-      status: 400,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
+  // Security: Validate post ID format
+  const postIdError = validatePostId(id);
+  if (postIdError) return postIdError;
 
   try {
     const currentUserId = locals.user?.sub || '';
@@ -33,7 +61,7 @@ export const GET: APIRoute = async ({ params, locals, request }) => {
       JOIN users u ON c.user_id = u.id
       WHERE c.post_id = ?
       ORDER BY c.created_at ASC
-    `).bind(currentUserId, id).all();
+    `).bind(currentUserId, id).all<CommentData>();
 
     return new Response(JSON.stringify({ comments: comments.results }), { 
       status: 200,
@@ -49,52 +77,35 @@ export const GET: APIRoute = async ({ params, locals, request }) => {
 };
 
 export const POST: APIRoute = async ({ params, request, locals, cookies }) => {
-  const env = locals.runtime.env as any;
+  const env = locals.runtime.env as CloudflareEnv;
   const { id: postId } = params;
 
-  if (!postId) {
-    return new Response(JSON.stringify({ error: 'Post ID required' }), { 
-      status: 400,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
+  // Security: Validate post ID format
+  const postIdError = validatePostId(postId);
+  if (postIdError) return postIdError;
 
-  // Verify authentication
-  let token = cookies.get('accessToken')?.value;
-  if (!token) {
-    const authHeader = request.headers.get('Authorization');
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      token = authHeader.substring(7);
-    }
-  }
-
-  if (!token) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
-      status: 401,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
-
-  const jwtSecret = await env.JWT_SECRET;
-  const decoded = verifyAccessToken(token, { JWT_SECRET: jwtSecret });
+  // Security: Check authentication via middleware
+  const authError = requireAuth(locals.user);
+  if (authError) return authError;
   
-  if (!decoded) {
-    return new Response(JSON.stringify({ error: 'Invalid token' }), { 
-      status: 401,
-      headers: { 'Content-Type': 'application/json' }
-    });
+  const userId = locals.user!.sub;
+  
+  // Security: Rate limiting - 30 comments per hour per user
+  // CRITICAL Issue #1 Fix
+  const rateLimitKey = `comment:${userId}`;
+  if (isRateLimited(rateLimitKey, CONFIG.rateLimit.commentMaxRequests, CONFIG.rateLimit.commentWindowMs)) {
+    const info = getRateLimitInfo(rateLimitKey, CONFIG.rateLimit.commentMaxRequests);
+    return createRateLimitResponse(info, 'Comment limit reached. Please try again later.');
   }
 
   try {
-    const body = await request.json() as any;
-    const { content } = body;
-
-    if (!content || typeof content !== 'string' || content.trim().length === 0) {
-      return new Response(JSON.stringify({ error: 'Content is required' }), { 
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
+    const body = await request.json() as CreateCommentBody;
+    
+    // Security: Validate comment content with length limits
+    // HIGH Issue #9 Fix
+    const contentResult = validateCommentContent(body.content);
+    if (contentResult instanceof Response) return contentResult;
+    const trimmedContent = contentResult;
 
     const commentId = crypto.randomUUID();
     const now = Math.floor(Date.now() / 1000);
@@ -102,7 +113,7 @@ export const POST: APIRoute = async ({ params, request, locals, cookies }) => {
     await env.DB.prepare(
       'INSERT INTO comments (id, post_id, user_id, content, created_at) VALUES (?, ?, ?, ?, ?)'
     )
-      .bind(commentId, postId, decoded.sub, content.trim(), now)
+      .bind(commentId, postId, userId, trimmedContent, now)
       .run();
 
     // Fetch the created comment with user info to return
@@ -118,11 +129,11 @@ export const POST: APIRoute = async ({ params, request, locals, cookies }) => {
       FROM comments c
       JOIN users u ON c.user_id = u.id
       WHERE c.id = ?
-    `).bind(commentId).first();
+    `).bind(commentId).first<Omit<CommentData, 'like_count' | 'user_has_liked'>>();
 
-    // Notify Durable Object
+    // Notify Durable Object (fire and forget)
     try {
-      const doId = env.POST_ROOM.idFromName(postId);
+      const doId = env.POST_ROOM.idFromName(postId!);
       const stub = env.POST_ROOM.get(doId);
       
       stub.fetch('http://internal/update', {

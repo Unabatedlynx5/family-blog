@@ -1,35 +1,91 @@
+/**
+ * Feed API endpoint - returns combined blog posts and user posts
+ * 
+ * Security Fixes Applied:
+ * - HIGH Issue #3: Proper TypeScript types (removed 'any')
+ * - HIGH Issue #8: Pagination limits to prevent abuse
+ * - CRITICAL Issue #1: Rate limiting for post creation
+ * - LOW Issue #33: Database query batching for better performance
+ */
+
 import type { APIRoute } from 'astro';
+import type { D1Result } from '@cloudflare/workers-types';
 import { getCollection } from 'astro:content';
+import type { CloudflareEnv } from '../../types/cloudflare.ts';
+import { CONFIG } from '../../types/cloudflare.ts';
+import { isRateLimited, getRateLimitInfo, createRateLimitResponse } from '../../../workers/utils/rate-limit.ts';
+import { requireAuth, validatePagination, validatePostContent } from '../../../workers/utils/validation.ts';
+import { verifyAccessToken } from '../../../workers/utils/auth.ts';
 
 export const prerender = false;
 
+/** Database post row */
+interface DBPostRow {
+  id: string;
+  user_id: string;
+  content: string;
+  created_at: number;
+  media_refs: string | null;
+  likes: string | null;
+  name: string;
+  email: string;
+  avatar_url: string | null;
+}
+
+/** Formatted post for API response */
+interface FormattedPost {
+  id: string;
+  user_id: string;
+  content: string;
+  created_at: number;
+  name: string;
+  email: string;
+  source: 'markdown' | 'ui';
+  title?: string;
+  slug?: string;
+  media_url: string | null;
+  like_count: number;
+  user_has_liked: number;
+  avatar_url?: string | null;
+}
+
+/** Request body for creating a post */
+interface CreatePostBody {
+  content?: string;
+  media_id?: string;
+}
+
 export const GET: APIRoute = async ({ locals, url }) => {
-  const env = locals.runtime.env as any;
+  const env = locals.runtime.env as CloudflareEnv;
   
   try {
-    // Get pagination params
-    const page = parseInt(url.searchParams.get('page') || '1');
-    const limit = parseInt(url.searchParams.get('limit') || '20');
-    const offset = (page - 1) * limit;
+    // Security: Validate and enforce pagination limits
+    // HIGH Issue #8 Fix
+    const paginationResult = validatePagination(
+      url.searchParams.get('page'),
+      url.searchParams.get('limit')
+    );
+    
+    if (paginationResult instanceof Response) {
+      return paginationResult;
+    }
+    
+    const { page, limit, offset } = paginationResult;
 
     // 1. Fetch Markdown posts
     const markdownPosts = await getCollection('blog');
 
-    // Note: Markdown posts don't support likes in the new schema (JSON array on posts table)
-    // unless we migrate them to DB or add a separate mechanism.
-    // For now, we'll just return 0 likes for them.
-
-    const formattedMarkdownPosts = markdownPosts.map(post => {
+    const formattedMarkdownPosts: FormattedPost[] = markdownPosts.map(post => {
       const id = `md-${post.id}`;
       
       return {
         id,
-        user_id: 'admin', // Historical posts assumed to be admin
-        content: post.body, // Note: This is raw markdown. For rendered HTML, we'd need a different approach or render on client
+        user_id: 'admin',
+        content: post.body,
         created_at: Math.floor(post.data.pubDate.getTime() / 1000),
-        name: 'Family Blog', // Author name for historical posts
+        name: 'Family Blog',
         email: '',
-        source: 'markdown',
+        source: 'markdown' as const,
         title: post.data.title,
         slug: post.id,
         media_url: post.data.heroImage || null,
@@ -38,58 +94,35 @@ export const GET: APIRoute = async ({ locals, url }) => {
       };
     });
 
-    // 2. Fetch DB posts (fetch slightly more than limit to handle interleaving, or fetch all if dataset is small)
-    // For a true merged pagination, we ideally need to query the DB with a limit, but since we are merging two sources,
-    // the simplest robust way for a small-medium scale is to fetch a larger chunk or handle sorting in memory if possible.
-    // However, to respect the "cursor" or "page" properly with two sources, we usually need to fetch 'limit' from BOTH, 
-    // sort, take 'limit', and keep track of state. 
-    // For this MVP, let's fetch the DB posts for the requested page, but we also need to account for where the markdown posts fall.
-    
-    // SIMPLIFIED STRATEGY for MVP:
-    // Fetch ALL markdown posts (assuming < 100s)
-    // Fetch DB posts with a generous limit or just standard pagination?
-    // If we just paginate DB, the markdown posts might appear "on top" or "mixed in" incorrectly if we don't have a global view.
-    
-    // Better Strategy for MVP:
-    // 1. Get all markdown posts.
-    // 2. Get count of DB posts.
-    // 3. Calculate total items.
-    // 4. If offset < markdownPosts.length, we might need some markdown posts.
-    // 5. This is getting complex for a simple feed.
-    
-    // ALTERNATIVE: Just return all markdown posts in the first request (page 1) or merge them all in memory if the total count is low.
-    // Let's assume the user wants a single chronological feed.
-    
-    // Let's try to fetch a reasonable number of DB posts to mix in.
-    // Since we can't easily "skip" X rows in DB based on how many markdown posts were before them without complex logic,
-    // we will fetch the DB page as requested, and merge ALL markdown posts, then sort and slice the current page in memory.
-    // This works well if the total number of posts (DB + MD) is not huge (e.g. < 1000).
-    
-    // Fetch enough DB posts to satisfy the current page without loading everything
+    // 2. Fetch DB posts with pagination-aware limit
+    // LOW Issue #33 Fix: Batch queries for better performance
     const dbFetchLimit = offset + limit;
     const currentUserId = locals.user?.sub || '';
 
-    const dbResult = await env.DB.prepare(`
-      SELECT 
-        p.id,
-        p.user_id,
-        p.content,
-        p.created_at,
-        p.media_refs,
-        p.likes,
-        u.name,
-        u.email,
-        u.avatar_url
-      FROM posts p
-      LEFT JOIN users u ON p.user_id = u.id
-      ORDER BY p.created_at DESC
-      LIMIT ?
-    `).bind(dbFetchLimit).all();
+    // Batch both queries together for efficiency
+    const [dbResult, dbCountRow] = await env.DB.batch([
+      env.DB.prepare(`
+        SELECT 
+          p.id,
+          p.user_id,
+          p.content,
+          p.created_at,
+          p.media_refs,
+          p.likes,
+          u.name,
+          u.email,
+          u.avatar_url
+        FROM posts p
+        LEFT JOIN users u ON p.user_id = u.id
+        ORDER BY p.created_at DESC
+        LIMIT ?
+      `).bind(dbFetchLimit),
+      env.DB.prepare('SELECT COUNT(*) as count FROM posts')
+    ]) as [D1Result<DBPostRow>, D1Result<{ count: number }>];
 
-    const dbCountRow = await env.DB.prepare('SELECT COUNT(*) as count FROM posts').first();
-    const dbTotal = dbCountRow?.count || 0;
+    const dbTotal = dbCountRow.results?.[0]?.count || 0;
 
-    const dbPosts = (dbResult.results || []).map((post: any) => {
+    const dbPosts: FormattedPost[] = (dbResult.results || []).map((post) => {
       // Parse likes
       let like_count = 0;
       let user_has_liked = 0;
@@ -101,37 +134,42 @@ export const GET: APIRoute = async ({ locals, url }) => {
             user_has_liked = 1;
           }
         }
-      } catch (e) {
+      } catch {
         // ignore parse error
       }
 
-      // If we have media_refs, we might want to resolve them to URLs or just pass them through.
-      // For now, let's just pass them through or pick the first one if the UI expects a single media_url.
-      let media_url = null;
+      // Parse media refs
+      let media_url: string | null = null;
       if (post.media_refs) {
         try {
-            const refs = JSON.parse(post.media_refs);
-            if (Array.isArray(refs) && refs.length > 0) {
-                media_url = `/api/media/${refs[0]}`;
-            }
-        } catch (e) {
-            // ignore parse error
+          const refs = JSON.parse(post.media_refs);
+          if (Array.isArray(refs) && refs.length > 0) {
+            media_url = `/api/media/${refs[0]}`;
+          }
+        } catch {
+          // ignore parse error
         }
       }
       
       return {
-        ...post,
+        id: post.id,
+        user_id: post.user_id,
+        content: post.content,
+        created_at: post.created_at,
+        name: post.name,
+        email: post.email,
+        avatar_url: post.avatar_url,
         like_count,
         user_has_liked,
         media_url,
-        source: 'ui'
+        source: 'ui' as const
       };
     });
 
     // Merge and Sort
     const allPosts = [...formattedMarkdownPosts, ...dbPosts].sort((a, b) => b.created_at - a.created_at);
 
-    // Paginate in memory using the already-limited DB result
+    // Paginate in memory
     const total = formattedMarkdownPosts.length + dbTotal;
     const paginatedPosts = allPosts.slice(offset, offset + limit);
 
@@ -164,38 +202,24 @@ export const GET: APIRoute = async ({ locals, url }) => {
 };
 
 export const POST: APIRoute = async ({ request, locals, cookies }) => {
-  const env = locals.runtime.env as any;
+  const env = locals.runtime.env as CloudflareEnv;
   
-  // Verify authentication
-  let token = cookies.get('accessToken')?.value;
-  if (!token) {
-    const authHeader = request.headers.get('Authorization');
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      token = authHeader.substring(7);
-    }
-  }
-
-  if (!token) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
-      status: 401,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
-
-  // @ts-ignore
-  const { verifyAccessToken } = await import('../../../workers/utils/auth.js');
-  const jwtSecret = await env.JWT_SECRET;
-  const decoded = verifyAccessToken(token, { JWT_SECRET: jwtSecret });
+  // Security: Check authentication via middleware
+  const authError = requireAuth(locals.user);
+  if (authError) return authError;
   
-  if (!decoded) {
-    return new Response(JSON.stringify({ error: 'Invalid token' }), { 
-      status: 401,
-      headers: { 'Content-Type': 'application/json' }
-    });
+  const userId = locals.user!.sub;
+  
+  // Security: Rate limiting - 20 posts per hour per user
+  // CRITICAL Issue #1 Fix
+  const rateLimitKey = `post:${userId}`;
+  if (isRateLimited(rateLimitKey, CONFIG.rateLimit.postMaxRequests, CONFIG.rateLimit.postWindowMs)) {
+    const info = getRateLimitInfo(rateLimitKey, CONFIG.rateLimit.postMaxRequests);
+    return createRateLimitResponse(info, 'Post limit reached. Please try again later.');
   }
 
   try {
-    const body = await request.json() as any;
+    const body = await request.json() as CreatePostBody;
     const { content, media_id } = body;
 
     if (!content && !media_id) {
@@ -205,18 +229,22 @@ export const POST: APIRoute = async ({ request, locals, cookies }) => {
       });
     }
 
+    // Validate content if provided
+    let validatedContent = '';
+    if (content) {
+      const contentResult = validatePostContent(content);
+      if (contentResult instanceof Response) return contentResult;
+      validatedContent = contentResult;
+    }
+
     const id = crypto.randomUUID();
     const now = Math.floor(Date.now() / 1000);
-
-    // The schema has media_refs (JSON array), not media_id.
-    // We need to adapt the insert to match the schema.
-    // If media_id is provided, we'll wrap it in a JSON array.
     const mediaRefs = media_id ? JSON.stringify([media_id]) : null;
 
     await env.DB.prepare(
       'INSERT INTO posts (id, user_id, content, media_refs, created_at) VALUES (?, ?, ?, ?, ?)'
     )
-      .bind(id, decoded.sub, content || '', mediaRefs, now)
+      .bind(id, userId, validatedContent, mediaRefs, now)
       .run();
 
     return new Response(
@@ -224,8 +252,8 @@ export const POST: APIRoute = async ({ request, locals, cookies }) => {
         ok: true,
         post: {
           id,
-          user_id: decoded.sub,
-          content,
+          user_id: userId,
+          content: validatedContent,
           media_refs: mediaRefs,
           created_at: now
         }

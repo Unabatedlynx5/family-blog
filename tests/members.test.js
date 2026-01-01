@@ -38,6 +38,7 @@ describe('Members API Tests', () => {
   let db;
   let env;
   let mockLocals;
+  const testUserId = '550e8400-e29b-41d4-a716-446655440000';
 
   beforeEach(() => {
     const sqlite = new Database(':memory:');
@@ -52,18 +53,22 @@ describe('Members API Tests', () => {
 
     db = new MockD1Database(sqlite);
     env = { DB: db };
-    mockLocals = { runtime: { env } };
+    // Add mock user for authentication
+    mockLocals = { 
+      runtime: { env },
+      user: { sub: testUserId, email: 'test@example.com', name: 'Test User', role: 'user' }
+    };
   });
 
   it('GET /api/members should return active members', async () => {
     const now = Math.floor(Date.now() / 1000);
     // Insert active user
     db.db.prepare('INSERT INTO users (id, email, password_hash, name, is_active, created_at, last_seen) VALUES (?, ?, ?, ?, ?, ?, ?)')
-      .run('user-1', 'active@example.com', 'hash', 'Active User', 1, now, now);
+      .run('550e8400-e29b-41d4-a716-446655440001', 'active@example.com', 'hash', 'Active User', 1, now, now);
     
     // Insert inactive user (last seen > 2 mins ago)
     db.db.prepare('INSERT INTO users (id, email, password_hash, name, is_active, created_at, last_seen) VALUES (?, ?, ?, ?, ?, ?, ?)')
-      .run('user-2', 'inactive@example.com', 'hash', 'Inactive User', 1, now, now - 300);
+      .run('550e8400-e29b-41d4-a716-446655440002', 'inactive@example.com', 'hash', 'Inactive User', 1, now, now - 300);
 
     const res = await getMembers({ locals: mockLocals });
     expect(res.status).toBe(200);

@@ -1,39 +1,52 @@
+/**
+ * Chat messages endpoint
+ * 
+ * Security Fixes Applied:
+ * - HIGH Issue #3: Proper TypeScript types (removed 'any')
+ * - Use middleware auth instead of manual token verification
+ * - Rate limiting for message sending
+ */
+
 import type { APIRoute } from 'astro';
-// @ts-ignore
-import { verifyAccessToken } from '../../../../workers/utils/auth.js';
+import type { CloudflareEnv } from '../../../types/cloudflare';
+import { CONFIG } from '../../../types/cloudflare';
+import { requireAuth } from '../../../../workers/utils/validation.ts';
+import { isRateLimited, getRateLimitInfo, createRateLimitResponse } from '../../../../workers/utils/rate-limit.ts';
 
 export const prerender = false;
 
-// Get recent messages
-export const GET: APIRoute = async ({ request, locals, cookies }) => {
-  const env = locals.runtime.env as any;
-  
-  // Verify authentication
-  let token = cookies.get('accessToken')?.value;
-  if (!token) {
-    const authHeader = request.headers.get('Authorization');
-    if (authHeader?.startsWith('Bearer ')) {
-      token = authHeader.slice(7);
-    }
-  }
+/** Chat message row from database */
+interface ChatMessageRow {
+  id: string;
+  user_id: string;
+  user: string;
+  user_email: string;
+  text: string;
+  created_at: number;
+  avatar_url: string | null;
+}
 
-  if (!token) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
-      status: 401,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
+/** Request body for sending a message */
+interface SendMessageBody {
+  message: string;
+}
+
+/** User row for message sending */
+interface MessageUserRow {
+  id: string;
+  name: string;
+  email: string;
+}
+
+// Get recent messages
+export const GET: APIRoute = async ({ locals }) => {
+  const env = locals.runtime.env as CloudflareEnv;
+  
+  // Security: Check authentication via middleware
+  const authError = requireAuth(locals.user);
+  if (authError) return authError;
 
   try {
-    const jwtSecret = await env.JWT_SECRET;
-    const decoded = verifyAccessToken(token, { JWT_SECRET: jwtSecret });
-    if (!decoded) {
-      return new Response(JSON.stringify({ error: 'Invalid token' }), { 
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
     // Get last 50 messages
     const result = await env.DB.prepare(`
       SELECT 
@@ -48,7 +61,7 @@ export const GET: APIRoute = async ({ request, locals, cookies }) => {
       LEFT JOIN users u ON m.user_id = u.id
       ORDER BY m.created_at DESC 
       LIMIT 50
-    `).all();
+    `).all<ChatMessageRow>();
 
     const messages = (result.results || []).reverse(); // Show oldest first
 
@@ -69,46 +82,34 @@ export const GET: APIRoute = async ({ request, locals, cookies }) => {
 };
 
 // Send a message
-export const POST: APIRoute = async ({ request, locals, cookies }) => {
-  const env = locals.runtime.env as any;
+export const POST: APIRoute = async ({ request, locals }) => {
+  const env = locals.runtime.env as CloudflareEnv;
   
-  // Verify authentication
-  let token = cookies.get('accessToken')?.value;
-  if (!token) {
-    const authHeader = request.headers.get('Authorization');
-    if (authHeader?.startsWith('Bearer ')) {
-      token = authHeader.slice(7);
-    }
-  }
+  // Security: Check authentication via middleware
+  const authError = requireAuth(locals.user);
+  if (authError) return authError;
 
-  if (!token) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
-      status: 401,
-      headers: { 'Content-Type': 'application/json' }
-    });
+  const userId = locals.user!.sub;
+  
+  // Security: Rate limiting - 60 messages per minute per user
+  const rateLimitKey = `chat:${userId}`;
+  if (isRateLimited(rateLimitKey, 60, 60 * 1000)) {
+    const info = getRateLimitInfo(rateLimitKey, 60);
+    return createRateLimitResponse(info, 'Message rate limit reached. Please slow down.');
   }
 
   try {
-    const jwtSecret = await env.JWT_SECRET;
-    const decoded = verifyAccessToken(token, { JWT_SECRET: jwtSecret });
-    if (!decoded) {
-      return new Response(JSON.stringify({ error: 'Invalid token' }), { 
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    let body;
+    let body: SendMessageBody;
     try {
-      body = await request.json();
-    } catch (e) {
+      body = await request.json() as SendMessageBody;
+    } catch {
       return new Response(JSON.stringify({ error: 'Invalid JSON' }), { 
         status: 400,
         headers: { 'Content-Type': 'application/json' }
       });
     }
 
-    const { message } = body as { message: string };
+    const { message } = body;
     if (!message || typeof message !== 'string') {
       return new Response(JSON.stringify({ error: 'Message must be a string' }), { 
         status: 400,
@@ -135,8 +136,8 @@ export const POST: APIRoute = async ({ request, locals, cookies }) => {
 
     // Get user info
     const user = await env.DB.prepare('SELECT id, name, email FROM users WHERE id = ?')
-      .bind(decoded.sub)
-      .first();
+      .bind(userId)
+      .first<MessageUserRow>();
 
     if (!user) {
       return new Response(JSON.stringify({ error: 'User not found' }), { 
