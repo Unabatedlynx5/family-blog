@@ -1,97 +1,27 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import Database from 'better-sqlite3';
-import fs from 'fs';
-import path from 'path';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { GET as listUsers, POST as createUser } from '../src/pages/api/admin/users';
 import { DELETE as deleteUser } from '../src/pages/api/admin/users/[id]';
-
-// Mock D1 Database using better-sqlite3
-class MockD1Database {
-  constructor(db) {
-    this.db = db;
-  }
-
-  prepare(query) {
-    const stmt = this.db.prepare(query);
-    
-    const bindFn = (...args) => {
-      return {
-        first: async () => {
-          try {
-            return stmt.get(...args);
-          } catch (e) {
-            return null;
-          }
-        },
-        run: async () => {
-          const result = stmt.run(...args);
-          return {
-            success: true,
-            meta: {
-              changes: result.changes,
-              last_row_id: result.lastInsertRowid
-            }
-          };
-        },
-        all: async () => {
-          return { results: stmt.all(...args) };
-        }
-      };
-    };
-
-    return {
-      bind: bindFn,
-      first: async () => {
-        try {
-          return stmt.get();
-        } catch (e) {
-          return null;
-        }
-      },
-      run: async () => {
-        const result = stmt.run();
-        return {
-          success: true,
-          meta: {
-            changes: result.changes,
-            last_row_id: result.lastInsertRowid
-          }
-        };
-      },
-      all: async () => {
-        return { results: stmt.all() };
-      }
-    };
-  }
-}
+import { applyMigrations } from './utils/db';
+import { setupMiniflare } from './utils/miniflare';
+import { createMockContext } from './utils/mocks';
 
 describe('Admin Users API', () => {
-  let db;
+  let mf;
   let env;
   let mockLocals;
 
   beforeEach(async () => {
-    // Setup in-memory DB
-    const sqlite = new Database(':memory:');
+    const setup = await setupMiniflare();
+    mf = setup.mf;
+    env = setup.env;
     
-    // Apply migrations
-    const migration = fs.readFileSync(path.resolve(__dirname, '../migrations/001_init.sql'), 'utf-8');
-    sqlite.exec(migration);
-    const migrationRole = fs.readFileSync(path.resolve(__dirname, '../migrations/008_add_role.sql'), 'utf-8');
-    sqlite.exec(migrationRole);
+    await applyMigrations(env.DB);
 
-    db = new MockD1Database(sqlite);
-    
-    env = {
-      DB: db,
-      JWT_SECRET: 'test-secret',
-      ADMIN_API_KEY: 'test-admin-key'
-    };
-
-    mockLocals = {
-      runtime: { env },
-      user: { email: 'admin@familyblog.com', sub: 'admin-id', role: 'admin' }
-    };
+    mockLocals = createMockContext(env, { 
+      email: 'admin@familyblog.com', 
+      sub: 'admin-id', 
+      role: 'admin' 
+    });
 
     // Create some test users
     const users = [
@@ -112,8 +42,11 @@ describe('Admin Users API', () => {
     }
     
     // Mark inactive user
-    // We need to access the underlying sqlite db to update directly as we don't have an update endpoint yet
-    db.db.prepare("UPDATE users SET is_active = 0 WHERE email = 'inactive@example.com'").run();
+    await env.DB.prepare("UPDATE users SET is_active = 0 WHERE email = 'inactive@example.com'").run();
+  });
+
+  afterEach(async () => {
+    await mf.dispose();
   });
 
   it('should list users with pagination', async () => {
@@ -157,7 +90,7 @@ describe('Admin Users API', () => {
     const url = new URL('http://localhost/api/admin/users');
     const req = new Request(url);
 
-    const res = await listUsers({ request: req, locals: { runtime: mockLocals.runtime }, url });
+    const res = await listUsers({ request: req, locals: createMockContext(env), url });
     expect(res.status).toBe(401);
   });
 
@@ -167,10 +100,7 @@ describe('Admin Users API', () => {
 
     const res = await listUsers({ 
       request: req, 
-      locals: { 
-        runtime: mockLocals.runtime,
-        user: { email: 'regular@user.com' }
-      }, 
+      locals: createMockContext(env, { email: 'regular@user.com' }), 
       url 
     });
     expect(res.status).toBe(403);
@@ -179,7 +109,7 @@ describe('Admin Users API', () => {
   describe('DELETE /api/admin/users/[id]', () => {
     it('should delete a user successfully', async () => {
       // First get a user ID to delete
-      const user = db.db.prepare("SELECT id FROM users WHERE email = 'user1@example.com'").get();
+      const user = await env.DB.prepare("SELECT id FROM users WHERE email = 'user1@example.com'").first();
       expect(user).toBeDefined();
 
       const res = await deleteUser({ 
@@ -192,8 +122,8 @@ describe('Admin Users API', () => {
       expect(data.ok).toBe(true);
 
       // Verify user is gone
-      const deletedUser = db.db.prepare("SELECT * FROM users WHERE id = ?").get(user.id);
-      expect(deletedUser).toBeUndefined();
+      const deletedUser = await env.DB.prepare("SELECT * FROM users WHERE id = ?").bind(user.id).first();
+      expect(deletedUser).toBeNull();
     });
 
     it('should return 404 for non-existent user', async () => {
@@ -219,7 +149,7 @@ describe('Admin Users API', () => {
     it('should require authentication', async () => {
       const res = await deleteUser({ 
         params: { id: 'some-id' }, 
-        locals: { runtime: mockLocals.runtime } 
+        locals: createMockContext(env) 
       });
       
       expect(res.status).toBe(401);
@@ -228,10 +158,7 @@ describe('Admin Users API', () => {
     it('should require admin privileges', async () => {
       const res = await deleteUser({ 
         params: { id: 'some-id' }, 
-        locals: { 
-          runtime: mockLocals.runtime,
-          user: { email: 'regular@user.com', sub: 'regular-id' }
-        } 
+        locals: createMockContext(env, { email: 'regular@user.com', sub: 'regular-id' })
       });
       
       expect(res.status).toBe(403);

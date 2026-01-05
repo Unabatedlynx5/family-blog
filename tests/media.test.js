@@ -1,99 +1,38 @@
-
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import Database from 'better-sqlite3';
-import fs from 'fs';
-import path from 'path';
-import jwt from 'jsonwebtoken';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { POST as uploadMedia } from '../src/pages/api/media/upload';
 import { GET as getMedia } from '../src/pages/api/media/[id]';
-
-// Mock D1 Database using better-sqlite3
-class MockD1Database {
-  constructor(db) {
-    this.db = db;
-  }
-
-  prepare(query) {
-    const stmt = this.db.prepare(query);
-    return {
-      bind: (...args) => {
-        this.boundArgs = args;
-        return {
-          first: async () => {
-            try {
-              return stmt.get(...args);
-            } catch (e) {
-              return null;
-            }
-          },
-          run: async () => {
-            return stmt.run(...args);
-          },
-          all: async () => {
-            return { results: stmt.all(...args) };
-          }
-        };
-      }
-    };
-  }
-}
-
-// Mock R2 Bucket
-class MockR2Bucket {
-  constructor() {
-    this.storage = new Map();
-  }
-
-  async put(key, value, options) {
-    this.storage.set(key, { value, options });
-    return { key };
-  }
-
-  async get(key) {
-    const item = this.storage.get(key);
-    if (!item) return null;
-    return {
-      body: item.value,
-      httpMetadata: item.options?.httpMetadata
-    };
-  }
-}
+import { applyMigrations } from './utils/db';
+import { setupMiniflare } from './utils/miniflare';
+import { createMockContext } from './utils/mocks';
 
 describe('Media API Tests', () => {
-  let db;
+  let mf;
   let env;
   let mockLocals;
-  let validToken;
   let userId;
 
-  beforeEach(() => {
-    // Setup in-memory DB
-    const sqlite = new Database(':memory:');
+  beforeEach(async () => {
+    const setup = await setupMiniflare();
+    mf = setup.mf;
+    env = setup.env;
     
-    // Apply migrations
-    const migration = fs.readFileSync(path.resolve(__dirname, '../migrations/001_init.sql'), 'utf-8');
-    sqlite.exec(migration);
-
-    db = new MockD1Database(sqlite);
-    
-    env = {
-      DB: db,
-      MEDIA: new MockR2Bucket(),
-      JWT_SECRET: 'test-secret'
-    };
+    await applyMigrations(env.DB);
 
     // Create a user
     userId = 'user-123';
-    sqlite.prepare('INSERT INTO users (id, email, password_hash, name, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?)')
-      .run(userId, 'user@example.com', 'hash', 'Test User', 1, Date.now());
+    await env.DB.prepare('INSERT INTO users (id, email, password_hash, name, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+      .bind(userId, 'user@example.com', 'hash', 'Test User', 1, Date.now())
+      .run();
 
-    mockLocals = {
-      runtime: { env },
-      user: { sub: userId, email: 'user@example.com', name: 'Test User' }
-    };
+    mockLocals = createMockContext(env, { 
+      sub: userId, 
+      email: 'user@example.com', 
+      name: 'Test User' 
+    });
+  });
 
-    // Generate valid token
-    validToken = jwt.sign({ sub: userId, email: 'user@example.com' }, 'test-secret', { expiresIn: '1h' });
+  afterEach(async () => {
+    await mf.dispose();
   });
 
   it('should upload an image', async () => {
@@ -104,13 +43,10 @@ describe('Media API Tests', () => {
 
     const req = new Request('http://localhost/api/media/upload', {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${validToken}`
-      },
       body: formData
     });
 
-    const res = await uploadMedia({ request: req, locals: mockLocals, cookies: { get: () => undefined } });
+    const res = await uploadMedia({ request: req, locals: mockLocals });
     expect(res.status).toBe(201);
     
     const data = await res.json();
@@ -119,7 +55,7 @@ describe('Media API Tests', () => {
     expect(data.media.content_type).toBe('image/png');
 
     // Verify in DB
-    const media = env.DB.db.prepare('SELECT * FROM media WHERE id = ?').get(data.media.id);
+    const media = await env.DB.prepare('SELECT * FROM media WHERE id = ?').bind(data.media.id).first();
     expect(media).toBeDefined();
     expect(media.mime_type).toBe('image/png');
     expect(media.uploader_id).toBe(userId);
@@ -136,13 +72,10 @@ describe('Media API Tests', () => {
 
     const req = new Request('http://localhost/api/media/upload', {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${validToken}`
-      },
       body: formData
     });
 
-    const res = await uploadMedia({ request: req, locals: mockLocals, cookies: { get: () => undefined } });
+    const res = await uploadMedia({ request: req, locals: mockLocals });
     expect(res.status).toBe(400);
     const data = await res.json();
     expect(data.error).toContain('Invalid file type');
@@ -154,8 +87,9 @@ describe('Media API Tests', () => {
     const r2Key = `media/${userId}/${mediaId}.png`;
     const now = Math.floor(Date.now() / 1000);
     
-    env.DB.db.prepare('INSERT INTO media (id, uploader_id, r2_key, mime_type, size, created_at) VALUES (?, ?, ?, ?, ?, ?)')
-      .run(mediaId, userId, r2Key, 'image/png', 100, now);
+    await env.DB.prepare('INSERT INTO media (id, uploader_id, r2_key, mime_type, size, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+      .bind(mediaId, userId, r2Key, 'image/png', 100, now)
+      .run();
     
     await env.MEDIA.put(r2Key, new Uint8Array([1, 2, 3]), { httpMetadata: { contentType: 'image/png' } });
 
@@ -180,7 +114,7 @@ describe('Media API Tests', () => {
     });
     
     // No user in locals
-    const res = await uploadMedia({ request: req, locals: { runtime: { env } }, cookies: { get: () => undefined } });
+    const res = await uploadMedia({ request: req, locals: createMockContext(env) });
     expect(res.status).toBe(401);
   });
 
@@ -193,7 +127,7 @@ describe('Media API Tests', () => {
       body: formData
     });
 
-    const res = await uploadMedia({ request: req, locals: mockLocals, cookies: { get: () => undefined } });
+    const res = await uploadMedia({ request: req, locals: mockLocals });
     expect(res.status).toBe(400);
     const data = await res.json();
     expect(data.error).toBe('No file provided');
@@ -218,7 +152,7 @@ describe('Media API Tests', () => {
       return map;
     };
 
-    const res = await uploadMedia({ request: req, locals: mockLocals, cookies: { get: () => undefined } });
+    const res = await uploadMedia({ request: req, locals: mockLocals });
     expect(res.status).toBe(400);
     const data = await res.json();
     expect(data.error).toContain('File too large');
@@ -235,9 +169,33 @@ describe('Media API Tests', () => {
     });
 
     // Mock R2 failure
-    env.MEDIA.put = vi.fn().mockRejectedValue(new Error('R2 Error'));
+    const originalPut = env.MEDIA.put;
+    // Create a new object with the mocked put method to ensure it's used
+    const mockMedia = {
+      ...env.MEDIA,
+      put: vi.fn().mockRejectedValue(new Error('R2 Error')),
+      get: env.MEDIA.get.bind(env.MEDIA) // Bind other methods if needed
+    };
+    
+    // We need to modify the env object that is passed to the handler
+    // Since mockLocals.runtime.env is a reference to env, modifying env.MEDIA should work
+    // UNLESS env.MEDIA is read-only.
+    
+    // Let's try to force replace it on the env object
+    Object.defineProperty(env, 'MEDIA', {
+      value: mockMedia,
+      writable: true
+    });
 
-    const res = await uploadMedia({ request: req, locals: mockLocals, cookies: { get: () => undefined } });
-    expect(res.status).toBe(500);
+    try {
+      const res = await uploadMedia({ request: req, locals: mockLocals });
+      expect(res.status).toBe(500);
+    } finally {
+      // Restore
+      Object.defineProperty(env, 'MEDIA', {
+        value: { ...mockMedia, put: originalPut }, // Restore original put
+        writable: true
+      });
+    }
   });
 });

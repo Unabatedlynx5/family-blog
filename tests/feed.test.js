@@ -1,9 +1,8 @@
-
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import Database from 'better-sqlite3';
-import fs from 'fs';
-import path from 'path';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { GET as getFeed } from '../src/pages/api/feed';
+import { applyMigrations } from './utils/db';
+import { setupMiniflare } from './utils/miniflare';
+import { createMockContext } from './utils/mocks';
 
 // Mock astro:content
 vi.mock('astro:content', () => ({
@@ -28,95 +27,44 @@ vi.mock('astro:content', () => ({
   ])
 }));
 
-// Mock D1 Database using better-sqlite3
-class MockD1Database {
-  constructor(db) {
-    this.db = db;
-  }
-
-  prepare(query) {
-    const stmt = this.db.prepare(query);
-    const bindFn = (...args) => {
-      this.boundArgs = args;
-      return {
-        first: async () => {
-          try {
-            return stmt.get(...args);
-          } catch (e) {
-            return null;
-          }
-        },
-        run: async () => {
-          return stmt.run(...args);
-        },
-        all: async () => {
-          return { results: stmt.all(...args) };
-        }
-      };
-    };
-
-    return {
-      bind: bindFn,
-      first: async () => {
-        try {
-          return stmt.get();
-        } catch (e) {
-          return null;
-        }
-      },
-      run: async () => {
-        return stmt.run();
-      },
-      all: async () => {
-        return { results: stmt.all() };
-      }
-    };
-  }
-}
-
 describe('Feed API Tests', () => {
-  let db;
+  let mf;
   let env;
   let mockLocals;
   let userId;
 
-  beforeEach(() => {
-    // Setup in-memory DB
-    const sqlite = new Database(':memory:');
+  beforeEach(async () => {
+    const setup = await setupMiniflare();
+    mf = setup.mf;
+    env = setup.env;
     
-    // Apply migrations
-    const migrationsDir = path.resolve(__dirname, '../migrations');
-    const migrationFiles = fs.readdirSync(migrationsDir).sort();
-    for (const file of migrationFiles) {
-        if (file.endsWith('.sql')) {
-            const migration = fs.readFileSync(path.join(migrationsDir, file), 'utf-8');
-            sqlite.exec(migration);
-        }
-    }
-
-    db = new MockD1Database(sqlite);
-    
-    env = {
-      DB: db
-    };
+    await applyMigrations(env.DB);
 
     userId = 'user-123';
-    mockLocals = {
-      runtime: { env },
-      user: { sub: userId, email: 'user@example.com', name: 'Test User' }
-    };
+    mockLocals = createMockContext(env, { 
+      sub: userId, 
+      email: 'user@example.com', 
+      name: 'Test User' 
+    });
 
     // Insert some DB posts
-    sqlite.prepare('INSERT INTO users (id, email, password_hash, name, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?)')
-      .run(userId, 'user@example.com', 'hash', 'Test User', 1, Date.now());
+    await env.DB.prepare('INSERT INTO users (id, email, password_hash, name, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+      .bind(userId, 'user@example.com', 'hash', 'Test User', 1, Date.now())
+      .run();
 
     // DB Post 1 (Newer than MD posts)
-    sqlite.prepare('INSERT INTO posts (id, user_id, content, created_at, likes) VALUES (?, ?, ?, ?, ?)')
-      .run('db-post-1', userId, 'DB Content 1', Math.floor(new Date('2023-01-03T12:00:00Z').getTime() / 1000), '[]');
+    await env.DB.prepare('INSERT INTO posts (id, user_id, content, created_at, likes) VALUES (?, ?, ?, ?, ?)')
+      .bind('db-post-1', userId, 'DB Content 1', Math.floor(new Date('2023-01-03T12:00:00Z').getTime() / 1000), '[]')
+      .run();
 
     // DB Post 2 (Older than MD Post 2, Newer than MD Post 1)
-    sqlite.prepare('INSERT INTO posts (id, user_id, content, created_at, likes) VALUES (?, ?, ?, ?, ?)')
-      .run('db-post-2', userId, 'DB Content 2', Math.floor(new Date('2023-01-01T15:00:00Z').getTime() / 1000), JSON.stringify([userId]));
+    await env.DB.prepare('INSERT INTO posts (id, user_id, content, created_at, likes) VALUES (?, ?, ?, ?, ?)')
+      .bind('db-post-2', userId, 'DB Content 2', Math.floor(new Date('2023-01-01T15:00:00Z').getTime() / 1000), JSON.stringify([userId]))
+      .run();
+  });
+
+  afterEach(async () => {
+    await mf.dispose();
   });
 
   it('should return merged and sorted feed', async () => {

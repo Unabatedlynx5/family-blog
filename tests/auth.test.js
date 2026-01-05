@@ -1,85 +1,28 @@
-
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import Database from 'better-sqlite3';
-import fs from 'fs';
-import path from 'path';
 import { POST as createUser } from '../src/pages/api/admin/users';
 import { POST as login } from '../src/pages/api/auth/login';
-import { POST as refresh } from '../src/pages/api/auth/refresh';
-import { POST as logout } from '../src/pages/api/auth/logout';
-
-// Mock D1 Database using better-sqlite3
-class MockD1Database {
-  constructor(db) {
-    this.db = db;
-  }
-
-  prepare(query) {
-    const stmt = this.db.prepare(query);
-    const bindFn = (...args) => {
-      this.boundArgs = args;
-      return {
-        first: async () => {
-          try {
-            return stmt.get(...args);
-          } catch (e) {
-            return null;
-          }
-        },
-        run: async () => {
-          return stmt.run(...args);
-        },
-        all: async () => {
-          return { results: stmt.all(...args) };
-        }
-      };
-    };
-
-    return {
-      bind: bindFn,
-      first: async () => {
-        try {
-          return stmt.get();
-        } catch (e) {
-          return null;
-        }
-      },
-      run: async () => {
-        return stmt.run();
-      },
-      all: async () => {
-        return { results: stmt.all() };
-      }
-    };
-  }
-}
+import { applyMigrations } from './utils/db';
+import { setupMiniflare } from './utils/miniflare';
 
 describe('Authentication Tests', () => {
-  let db;
+  let mf;
   let env;
   let mockLocals;
 
-  beforeEach(() => {
-    // Setup in-memory DB
-    const sqlite = new Database(':memory:');
+  beforeEach(async () => {
+    const setup = await setupMiniflare();
+    mf = setup.mf;
+    env = setup.env;
     
-    // Apply migrations
-    const migration = fs.readFileSync(path.resolve(__dirname, '../migrations/001_init.sql'), 'utf-8');
-    sqlite.exec(migration);
-    const migrationRole = fs.readFileSync(path.resolve(__dirname, '../migrations/008_add_role.sql'), 'utf-8');
-    sqlite.exec(migrationRole);
-
-    db = new MockD1Database(sqlite);
+    await applyMigrations(env.DB);
     
-    env = {
-      DB: db,
-      JWT_SECRET: 'test-secret',
-      ADMIN_API_KEY: 'test-admin-key'
-    };
-
     mockLocals = {
       runtime: { env }
     };
+  });
+
+  afterEach(async () => {
+    await mf.dispose();
   });
 
   it('should create a user when authenticated as admin', async () => {
@@ -111,7 +54,7 @@ describe('Authentication Tests', () => {
     expect(data.ok).toBe(true);
 
     // Verify in DB
-    const user = env.DB.db.prepare('SELECT * FROM users WHERE email = ?').get('newuser@example.com');
+    const user = await env.DB.prepare('SELECT * FROM users WHERE email = ?').bind('newuser@example.com').first();
     expect(user).toBeDefined();
     expect(user.name).toBe('New User');
   });
@@ -162,8 +105,9 @@ describe('Authentication Tests', () => {
     // First create a user (manually to skip API overhead)
     const bcrypt = await import('bcryptjs');
     const hash = await bcrypt.hash('password123', 10);
-    env.DB.db.prepare('INSERT INTO users (id, email, password_hash, name, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?)')
-      .run('user-123', 'user@example.com', hash, 'Test User', 1, Date.now());
+    await env.DB.prepare('INSERT INTO users (id, email, password_hash, name, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+      .bind('user-123', 'user@example.com', hash, 'Test User', 1, Date.now())
+      .run();
 
     const req = new Request('http://localhost/api/auth/login', {
       method: 'POST',
@@ -189,8 +133,6 @@ describe('Authentication Tests', () => {
     
     // Check if refresh token cookie was set
     expect(cookies.set).toHaveBeenCalled();
-    // The order of cookie setting might vary or be implementation detail, 
-    // but we expect both 'accessToken' and 'refresh' to be set.
     const calls = cookies.set.mock.calls;
     const refreshCall = calls.find(call => call[0] === 'refresh');
     expect(refreshCall).toBeDefined();
@@ -200,8 +142,9 @@ describe('Authentication Tests', () => {
   it('should fail login with wrong password', async () => {
     const bcrypt = await import('bcryptjs');
     const hash = await bcrypt.hash('password123', 10);
-    env.DB.db.prepare('INSERT INTO users (id, email, password_hash, name, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?)')
-      .run('user-123', 'user@example.com', hash, 'Test User', 1, Date.now());
+    await env.DB.prepare('INSERT INTO users (id, email, password_hash, name, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+      .bind('user-123', 'user@example.com', hash, 'Test User', 1, Date.now())
+      .run();
 
     const req = new Request('http://localhost/api/auth/login', {
       method: 'POST',

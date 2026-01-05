@@ -1,83 +1,38 @@
-
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import Database from 'better-sqlite3';
-import fs from 'fs';
-import path from 'path';
-import jwt from 'jsonwebtoken';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { POST as createPost } from '../src/pages/api/posts/index';
 import { GET as getPost } from '../src/pages/api/posts/[id]';
-
-// Mock D1 Database using better-sqlite3
-class MockD1Database {
-  constructor(db) {
-    this.db = db;
-  }
-
-  prepare(query) {
-    const stmt = this.db.prepare(query);
-    return {
-      bind: (...args) => {
-        this.boundArgs = args;
-        return {
-          first: async () => {
-            try {
-              return stmt.get(...args);
-            } catch (e) {
-              return null;
-            }
-          },
-          run: async () => {
-            return stmt.run(...args);
-          },
-          all: async () => {
-            return { results: stmt.all(...args) };
-          }
-        };
-      }
-    };
-  }
-}
+import { applyMigrations } from './utils/db';
+import { setupMiniflare } from './utils/miniflare';
+import { createMockContext } from './utils/mocks';
 
 describe('Posts API Tests', () => {
-  let db;
+  let mf;
   let env;
   let mockLocals;
-  let validToken;
   let userId;
 
-  beforeEach(() => {
-    // Setup in-memory DB
-    const sqlite = new Database(':memory:');
+  beforeEach(async () => {
+    const setup = await setupMiniflare();
+    mf = setup.mf;
+    env = setup.env;
     
-    // Apply migrations
-    const migrationsDir = path.resolve(__dirname, '../migrations');
-    const migrationFiles = fs.readdirSync(migrationsDir).sort();
-    for (const file of migrationFiles) {
-        if (file.endsWith('.sql')) {
-            const migration = fs.readFileSync(path.join(migrationsDir, file), 'utf-8');
-            sqlite.exec(migration);
-        }
-    }
-
-    db = new MockD1Database(sqlite);
-    
-    env = {
-      DB: db,
-      JWT_SECRET: 'test-secret'
-    };
+    await applyMigrations(env.DB);
 
     // Create a user
     userId = 'user-123';
-    sqlite.prepare('INSERT INTO users (id, email, password_hash, name, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?)')
-      .run(userId, 'user@example.com', 'hash', 'Test User', 1, Date.now());
+    await env.DB.prepare('INSERT INTO users (id, email, password_hash, name, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+      .bind(userId, 'user@example.com', 'hash', 'Test User', 1, Date.now())
+      .run();
 
-    mockLocals = {
-      runtime: { env },
-      user: { sub: userId, email: 'user@example.com', name: 'Test User' }
-    };
+    mockLocals = createMockContext(env, { 
+      sub: userId, 
+      email: 'user@example.com', 
+      name: 'Test User' 
+    });
+  });
 
-    // Generate valid token
-    validToken = jwt.sign({ sub: userId, email: 'user@example.com' }, 'test-secret', { expiresIn: '1h' });
+  afterEach(async () => {
+    await mf.dispose();
   });
 
   it('should create a post', async () => {
@@ -89,11 +44,7 @@ describe('Posts API Tests', () => {
       })
     });
 
-    const cookies = {
-      get: (name) => name === 'accessToken' ? { value: validToken } : undefined
-    };
-
-    const res = await createPost({ request: req, locals: mockLocals, cookies });
+    const res = await createPost({ request: req, locals: mockLocals });
     expect(res.status).toBe(201);
     
     const data = await res.json();
@@ -102,7 +53,7 @@ describe('Posts API Tests', () => {
     expect(data.post.user_id).toBe(userId);
 
     // Verify in DB
-    const post = env.DB.db.prepare('SELECT * FROM posts WHERE id = ?').get(data.post.id);
+    const post = await env.DB.prepare('SELECT * FROM posts WHERE id = ?').bind(data.post.id).first();
     expect(post).toBeDefined();
     expect(post.content).toBe('Hello World');
   });
@@ -116,14 +67,10 @@ describe('Posts API Tests', () => {
       })
     });
 
-    const cookies = {
-      get: () => undefined
-    };
-
     // Remove user from locals to simulate unauthenticated
-    const unauthLocals = { ...mockLocals, user: null };
+    const unauthLocals = createMockContext(env);
 
-    const res = await createPost({ request: req, locals: unauthLocals, cookies });
+    const res = await createPost({ request: req, locals: unauthLocals });
     expect(res.status).toBe(401);
   });
 
@@ -136,19 +83,16 @@ describe('Posts API Tests', () => {
       })
     });
 
-    const cookies = {
-      get: (name) => name === 'accessToken' ? { value: validToken } : undefined
-    };
-
-    const res = await createPost({ request: req, locals: mockLocals, cookies });
+    const res = await createPost({ request: req, locals: mockLocals });
     expect(res.status).toBe(400);
   });
 
   it('should get a post by id', async () => {
     // Create a post first
     const postId = 'post-123';
-    env.DB.db.prepare('INSERT INTO posts (id, user_id, content, created_at, likes) VALUES (?, ?, ?, ?, ?)')
-      .run(postId, userId, 'Test Content', Math.floor(Date.now() / 1000), JSON.stringify([userId]));
+    await env.DB.prepare('INSERT INTO posts (id, user_id, content, created_at, likes) VALUES (?, ?, ?, ?, ?)')
+      .bind(postId, userId, 'Test Content', Math.floor(Date.now() / 1000), JSON.stringify([userId]))
+      .run();
 
     const req = new Request(`http://localhost/api/posts/${postId}`);
     
