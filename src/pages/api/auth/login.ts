@@ -65,7 +65,14 @@ export const POST: APIRoute = async ({ request, locals, cookies, clientAddress }
     }
 
     const jwtSecret = await env.JWT_SECRET;
-    const accessToken = createAccessToken({ sub: user.id, email: user.email, name: user.name, role: user.role }, { JWT_SECRET: jwtSecret });
+    const accessToken = createAccessToken({ 
+      sub: user.id, 
+      email: user.email, 
+      name: user.name, 
+      role: user.role,
+      picture: user.avatar_url 
+    }, { JWT_SECRET: jwtSecret });
+
     const refreshToken = await createAndStoreRefreshToken(env.DB, user.id);
 
     // Set access token cookie

@@ -96,7 +96,7 @@ if (!user) {
           try {
             const data = JSON.parse(event.data);
             if (data.type === 'message') {
-              appendMessage(data.message);
+              appendMessage(data.message || data); // Handle both wrapped and unwrapped format
             }
           } catch (e) {}
         };
@@ -115,12 +115,12 @@ if (!user) {
         if (!messagesContainer) return;
         const div = document.createElement('div');
         // Check both user_id (from server) and userId (from session)
-        const isOwn = msg.user_id === userId;
+        const isOwn = msg.user_id === userId || msg.userId === userId;
         
         div.className = `flex ${isOwn ? 'flex-row-reverse' : 'flex-row'} items-end gap-2 mb-4`;
         
-        const displayName = msg.user || msg.user_id || 'Anon';
-        const avatarUrl = msg.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=random`;
+        const displayName = msg.user || msg.user_id || msg.name || 'Anon';
+        const avatarUrl = msg.avatar_url || msg.avatar || msg.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=random`;
         
         const bubbleClass = isOwn 
             ? 'bg-[#007aff] dark:bg-[#0a84ff] text-white rounded-[18px] rounded-br-sm px-3 py-2 relative text-left' 
@@ -144,6 +144,7 @@ if (!user) {
         const text = input.value.trim();
         if (text && ws && ws.readyState === WebSocket.OPEN) {
           // User info is now attached to the connection on the server side
+          // Only send the text content as requested by GlobalChat
           ws.send(JSON.stringify({ 
               type: 'message', 
               text

@@ -34,7 +34,7 @@ export const POST: APIRoute = async ({ cookies, locals }) => {
     const { user_id, newToken } = result;
 
     // Get user email for access token
-    const user = await env.DB.prepare('SELECT email, name, role FROM users WHERE id = ?').bind(user_id).first();
+    const user = await env.DB.prepare('SELECT email, name, role, avatar_url FROM users WHERE id = ?').bind(user_id).first();
     
     if (!user) {
       return new Response(JSON.stringify({ error: 'User not found' }), { 
@@ -44,7 +44,13 @@ export const POST: APIRoute = async ({ cookies, locals }) => {
     }
 
     const jwtSecret = await env.JWT_SECRET;
-    const newAccessToken = createAccessToken({ sub: user_id, email: user.email, name: user.name, role: user.role }, { JWT_SECRET: jwtSecret });
+    const newAccessToken = createAccessToken({ 
+      sub: user_id, 
+      email: user.email, 
+      name: user.name, 
+      role: user.role,
+      picture: user.avatar_url
+    }, { JWT_SECRET: jwtSecret });
 
     // Set new refresh token cookie
     cookies.set('refresh', newToken, {
