@@ -26,6 +26,11 @@
 			"bucket_name": "family-blog-media"
 		}
 	],
+	"send_email": [
+		{
+			"name": "EMAIL"
+		}
+	],
 	"durable_objects": {
 		"bindings": [
 			{
@@ -40,6 +45,14 @@
 			}
 		]
 	},
-	"migrations": [
-	]
+	"migrations": [],
+	"routes": [
+		{
+			"pattern": "blog.dentonlabs.tech",
+			"zone_name": "dentonlabs.tech",
+			"custom_domain": true
+		}
+	],
+	"workers_dev": true,
+	"preview_urls": true
 }

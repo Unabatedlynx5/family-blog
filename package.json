@@ -25,6 +25,7 @@
     "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^9.0.2",
     "marked": "^17.0.1",
+    "mimetext": "^3.0.27",
     "tiptap-markdown": "^0.9.0",
     "typescript": "^5.8.3"
   },
