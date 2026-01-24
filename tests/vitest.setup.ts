@@ -2,7 +2,7 @@ import { beforeAll, afterAll, beforeEach } from 'vitest';
 import { createTestEnv, getTestEnv } from './utils/miniflare.js';
 import { resetDatabase } from './utils/db.js';
 
-let mf;
+let mf: any;
 let env;
 
 beforeAll(async () => {
@@ -12,6 +12,16 @@ beforeAll(async () => {
   // 2. Get the bindings (DB, KV, R2, Service Bindings) as the 'family-blog' worker sees them
   env = await getTestEnv(mf);
   
+  // MOCK EMAIL BINDING if missing (Miniflare might not expose the send_email binding directly via getBindings yet)
+  if (env && !env.EMAIL) {
+    env.EMAIL = {
+      send: async (message: any) => {
+        // console.log("Mock Email Sent:", message);
+        return;
+      }
+    };
+  }
+
   // Apply migrations to ensure DB structure exists
   // We need to import applyMigrations first.
   if (env && env.DB) {

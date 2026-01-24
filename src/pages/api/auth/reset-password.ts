@@ -1,6 +1,8 @@
 import type { APIRoute } from 'astro';
 import { randomUUID, createHash } from 'crypto';
 import bcrypt from 'bcryptjs';
+import { createMimeMessage } from 'mimetext';
+import { EmailMessage } from 'cloudflare:email';
 
 export const prerender = false;
 
@@ -44,12 +46,48 @@ export const POST: APIRoute = async ({ request, locals }) => {
         .run();
 
       // In a real app, send email here.
+      const resetLink = `${new URL(request.url).origin}/reset-password?token=${token}`;
+      
       // For development only - DO NOT LOG TOKENS IN PRODUCTION
       if (env.ENVIRONMENT === 'development') {
-        const resetLink = `${new URL(request.url).origin}/reset-password?token=${token}`;
         console.log(`[DEV ONLY] Password reset link: ${resetLink}`);
+      } 
+      
+      if (env.EMAIL) {
+        try {
+          const sender = 'frank@dentonlabs.tech'; // TODO: Update this to your verified sender
+          const subject = 'Reset your password';
+          const body = `Hi there,
+
+We received a request to reset your password.
+Click the link below to set a new password:
+
+${resetLink}
+
+If you didn't request this, you can ignore this email.`;
+
+          // Use mimetext to create the email
+          // @ts-ignore
+          const msg = createMimeMessage();
+          msg.setSender(sender);
+          msg.setRecipient(email);
+          msg.setSubject(subject);
+          msg.addMessage({
+            contentType: 'text/plain',
+            data: body
+          });
+
+          const rawEmail = msg.asRaw();
+
+          // Valid for Workers with "send_email" binding
+          // @ts-ignore
+          const message = new EmailMessage(sender, email, rawEmail);
+          await env.EMAIL.send(message);
+        } catch (e) {
+          console.error('[Email Error] Failed to send reset email:', e);
+        }
       } else {
-        console.log(`[Password Reset] Token generated for user ${user.id}`);
+        console.log(`[Password Reset] Token generated for user ${user.id} (No EMAIL binding detected)`);
       }
 
       return new Response(JSON.stringify({ message: 'If an account exists with that email, a reset link has been sent.' }), { 
