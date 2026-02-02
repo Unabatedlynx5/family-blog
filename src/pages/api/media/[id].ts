@@ -15,9 +15,20 @@ export const GET: APIRoute = async ({ params, locals }) => {
     // Note: Schema uses mime_type, not content_type. And filename is not in the schema shown in migration 001.
     // Let's check if filename exists or if we should just use mime_type.
     // Based on migration 001, there is no filename column.
-    const media = await env.DB.prepare(
+    let media = await env.DB.prepare(
       'SELECT id, mime_type, r2_key FROM media WHERE id = ?'
     ).bind(mediaId).first();
+
+    // If not found in media table, check photos table (for activity feed)
+    if (!media) {
+       const photo = await env.DB.prepare(
+         'SELECT id, r2_key FROM photos WHERE id = ?'
+       ).bind(mediaId).first();
+       
+       if (photo) {
+         media = { ...photo, mime_type: null }; // mime_type will be retrieved from R2 object metadata
+       }
+    }
 
     if (!media) {
       return new Response('Media not found', { status: 404 });
@@ -33,7 +44,7 @@ export const GET: APIRoute = async ({ params, locals }) => {
     // Return the file with correct content type
     return new Response(object.body, {
       headers: {
-        'Content-Type': media.mime_type || 'application/octet-stream',
+        'Content-Type': media.mime_type || object.httpMetadata?.contentType || 'application/octet-stream',
         'Cache-Control': 'public, max-age=31536000',
         'Content-Disposition': `inline`
       }

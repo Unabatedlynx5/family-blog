@@ -7,10 +7,15 @@ const env = Astro.locals.runtime?.env as any;
 const twoMinutesAgo = Math.floor(Date.now() / 1000) - 120;
 
 let members: any[] = [];
+let offlineMembers: any[] = [];
+
 if (env?.DB) {
   try {
     const rows = await env.DB.prepare('SELECT id, name, avatar_url, last_seen FROM users WHERE last_seen IS NOT NULL AND last_seen > ? ORDER BY last_seen DESC').bind(twoMinutesAgo).all();
     members = (rows.results || []).map((r: any) => ({ id: r.id, name: r.name, avatar_url: r.avatar_url, last_seen: r.last_seen }));
+
+    const offlineRows = await env.DB.prepare('SELECT id, name, avatar_url, last_seen FROM users WHERE last_seen IS NOT NULL AND last_seen <= ? ORDER BY last_seen DESC LIMIT 50').bind(twoMinutesAgo).all();
+    offlineMembers = (offlineRows.results || []).map((r: any) => ({ id: r.id, name: r.name, avatar_url: r.avatar_url, last_seen: r.last_seen }));
   } catch (e) {
     // ignore DB errors for page render
   }
@@ -21,15 +26,38 @@ if (env?.DB) {
   <div class="max-w-3xl mx-auto">
     <h1 class="text-2xl font-bold mb-4">Online Members</h1>
 
-    <div id="members-list" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div id="members-list" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
       {members.length === 0 ? (
         <div class="text-sm text-[#65676b] dark:text-[#b0b3b8]">No members online right now.</div>
       ) : (
         members.map((m: any) => (
-          <div class="flex items-center gap-3 bg-white dark:bg-[#242526] p-3 rounded-lg shadow-sm">
-            <img src={m.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name||'User')}&background=random`} alt={m.name} class="w-12 h-12 rounded-full object-cover" />
+          <div class="flex items-center gap-3 bg-white dark:bg-[#242526] p-3 rounded-lg shadow-sm border border-green-500/20">
+            <div class="relative">
+                <img src={m.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name||'User')}&background=random`} alt={m.name} class="w-12 h-12 rounded-full object-cover" />
+                <div class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-[#242526]"></div>
+            </div>
             <div class="flex-1">
               <div class="font-semibold">{m.name || 'Unknown'}</div>
+              <div class="text-xs text-[#65676b] dark:text-[#b0b3b8]">Last seen: <span class="last-seen" data-ts={m.last_seen}>{m.last_seen ? new Date(m.last_seen*1000).toLocaleString() : '—'}</span></div>
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+
+    <h1 class="text-2xl font-bold mb-4">Offline Members</h1>
+    <div id="offline-members-list" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {offlineMembers.length === 0 ? (
+        <div class="text-sm text-[#65676b] dark:text-[#b0b3b8]">No offline members found.</div>
+      ) : (
+        offlineMembers.map((m: any) => (
+          <div class="flex items-center gap-3 bg-white dark:bg-[#242526] p-3 rounded-lg shadow-sm opacity-75">
+             <div class="relative">
+                <img src={m.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name||'User')}&background=random`} alt={m.name} class="w-12 h-12 rounded-full object-cover grayscale" />
+                <div class="absolute bottom-0 right-0 w-3 h-3 bg-gray-400 rounded-full border-2 border-white dark:border-[#242526]"></div>
+            </div>
+            <div class="flex-1">
+              <div class="font-semibold text-gray-600 dark:text-gray-400">{m.name || 'Unknown'}</div>
               <div class="text-xs text-[#65676b] dark:text-[#b0b3b8]">Last seen: <span class="last-seen" data-ts={m.last_seen}>{m.last_seen ? new Date(m.last_seen*1000).toLocaleString() : '—'}</span></div>
             </div>
           </div>
@@ -42,40 +70,66 @@ if (env?.DB) {
     // Auto-refresh members list every 30s
     (function(){
       const REFRESH = 30 * 1000;
+      
+      interface Member {
+        id: string;
+        name: string;
+        avatar_url: string | null;
+        last_seen: number;
+      }
+
+      function renderMember(m: Member, isOnline: boolean) {
+        const avatar = m.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name||'User')}&background=random`;
+        const name = m.name || 'Unknown';
+        const ts = m.last_seen ? new Date(m.last_seen*1000).toLocaleString() : '—';
+        
+        const onlineClasses = isOnline ? "border border-green-500/20" : "opacity-75";
+        const indicatorColor = isOnline ? "bg-green-500" : "bg-gray-400";
+        const imgClasses = isOnline ? "" : "grayscale";
+        const nameClasses = isOnline ? "" : "text-gray-600 dark:text-gray-400";
+
+        return `
+          <div class="flex items-center gap-3 bg-white dark:bg-[#242526] p-3 rounded-lg shadow-sm ${onlineClasses}">
+            <div class="relative">
+                <img src="${avatar}" alt="${name}" class="w-12 h-12 rounded-full object-cover ${imgClasses}" />
+                <div class="absolute bottom-0 right-0 w-3 h-3 ${indicatorColor} rounded-full border-2 border-white dark:border-[#242526]"></div>
+            </div>
+            <div class="flex-1">
+              <div class="font-semibold ${nameClasses}">${name}</div>
+              <div class="text-xs text-[#65676b] dark:text-[#b0b3b8]">Last seen: <span>${ts}</span></div>
+            </div>
+          </div>
+        `;
+      }
+
       async function refresh(){
         try{
           const res = await fetch('/api/members');
           if (!res.ok) return;
           
-          interface Member {
-            id: string;
-            name: string;
-            avatar_url: string | null;
-            last_seen: number;
-          }
-
-          const data = await res.json() as { members: Member[] };
+          const data = await res.json() as { members: Member[], offlineMembers: Member[] };
+          
+          // Update Online List
           const listEl = document.getElementById('members-list');
-          if (!listEl) return;
-          const members = Array.isArray(data.members) ? data.members : [];
-          if (members.length === 0) {
-            listEl.innerHTML = `<div class="text-sm text-[#65676b] dark:text-[#b0b3b8]">No members online right now.</div>`;
-            return;
+          if (listEl) {
+             const members = Array.isArray(data.members) ? data.members : [];
+             if (members.length === 0) {
+               listEl.innerHTML = `<div class="text-sm text-[#65676b] dark:text-[#b0b3b8]">No members online right now.</div>`;
+             } else {
+               listEl.innerHTML = members.map(m => renderMember(m, true)).join('');
+             }
           }
-          listEl.innerHTML = members.map((m:any)=>{
-            const avatar = m.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name||'User')}&background=random`;
-            const name = m.name || 'Unknown';
-            const ts = m.last_seen ? new Date(m.last_seen*1000).toLocaleString() : '—';
-            return `
-              <div class="flex items-center gap-3 bg-white dark:bg-[#242526] p-3 rounded-lg shadow-sm">
-                <img src="${avatar}" alt="${name}" class="w-12 h-12 rounded-full object-cover" />
-                <div class="flex-1">
-                  <div class="font-semibold">${name}</div>
-                  <div class="text-xs text-[#65676b] dark:text-[#b0b3b8]">Last seen: <span>${ts}</span></div>
-                </div>
-              </div>
-            `;
-          }).join('');
+          
+          // Update Offline List
+          const offlineListEl = document.getElementById('offline-members-list');
+          if (offlineListEl) {
+             const offlineMembers = Array.isArray(data.offlineMembers) ? data.offlineMembers : [];
+             if (offlineMembers.length === 0) {
+               offlineListEl.innerHTML = `<div class="text-sm text-[#65676b] dark:text-[#b0b3b8]">No offline members found.</div>`;
+             } else {
+               offlineListEl.innerHTML = offlineMembers.map(m => renderMember(m, false)).join('');
+             }
+          }
         }catch(e){/* ignore */}
       }
       setInterval(refresh, REFRESH);

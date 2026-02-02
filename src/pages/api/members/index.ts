@@ -13,9 +13,13 @@ export const GET: APIRoute = async ({ locals }) => {
     const rows = await env.DB.prepare('SELECT id, name, avatar_url, last_seen FROM users WHERE last_seen IS NOT NULL AND last_seen > ? ORDER BY last_seen DESC LIMIT 100').bind(twoMinutesAgo).all();
     const members = (rows.results || []).map((r: any) => ({ id: r.id, name: r.name, avatar_url: r.avatar_url, last_seen: r.last_seen }));
 
-    return new Response(JSON.stringify({ active, members }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    // Fetch offline members (last_seen <= 2 minutes ago)
+    const offlineRows = await env.DB.prepare('SELECT id, name, avatar_url, last_seen FROM users WHERE last_seen IS NOT NULL AND last_seen <= ? ORDER BY last_seen DESC LIMIT 100').bind(twoMinutesAgo).all();
+    const offlineMembers = (offlineRows.results || []).map((r: any) => ({ id: r.id, name: r.name, avatar_url: r.avatar_url, last_seen: r.last_seen }));
+
+    return new Response(JSON.stringify({ active, members, offlineMembers }), { status: 200, headers: { 'Content-Type': 'application/json' } });
   } catch (err) {
     console.error('Members fetch error:', err);
-    return new Response(JSON.stringify({ error: 'Server error', active: 0, members: [] }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ error: 'Server error', active: 0, members: [], offlineMembers: [] }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   }
 };

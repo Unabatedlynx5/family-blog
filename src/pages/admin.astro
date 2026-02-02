@@ -15,7 +15,7 @@ if (!user) {
   <head>
     <BaseHead title="Admin" description="Admin Dashboard" />
   </head>
-  <body class="bg-white text-gray-900 antialiased dark:bg-[#18191a] dark:text-[#e4e6eb]">
+  <body class="bg-none min-h-screen bg-white text-gray-900 antialiased dark:bg-[#18191a] dark:text-[#e4e6eb]">
     <Header />
     <main class="w-[960px] max-w-[calc(100%-2em)] mx-auto p-3">
       <h1 class="text-4xl font-bold mb-8 dark:text-[#e4e6eb]">Admin Dashboard</h1>
@@ -103,6 +103,26 @@ if (!user) {
           </div>
         </section>
       </div>
+
+      <!-- Content Upload Section -->
+      <div class="mt-8 bg-white p-6 rounded-lg border border-gray-200 h-fit dark:bg-[#242526] dark:border-[#393a3b]">
+        <h2 class="text-2xl font-bold mb-4 dark:text-[#e4e6eb]">Upload Pochsalad Menu</h2>
+        <form id="upload-pochsalad" class="space-y-4">
+           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+             <label class="block">
+                <span class="text-gray-700 dark:text-[#b0b3b8]">Menu Date</span>
+                <input name="date" type="date" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring focus:ring-accent focus:ring-opacity-50 p-2 border dark:bg-[#3a3b3c] dark:border-[#393a3b] dark:text-[#e4e6eb]">
+             </label>
+             <label class="block">
+                <span class="text-gray-700 dark:text-[#b0b3b8]">Image (filename format: PochsaladSourceMMMdd_yy.jpg)</span>
+                <input name="file" type="file" accept="image/*" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring focus:ring-accent focus:ring-opacity-50 p-2 border dark:bg-[#3a3b3c] dark:border-[#393a3b] dark:text-[#e4e6eb]">
+             </label>
+           </div>
+           <button type="submit" class="bg-accent text-white px-4 py-2 rounded hover:bg-accent/80 transition-colors">Upload Menu</button>
+        </form>
+        <div id="upload-result" class="mt-4 text-sm font-medium"></div>
+      </div>
+
     </main>
     <Footer />
 
@@ -301,6 +321,80 @@ if (!user) {
 
       // Initial load
       fetchUsers();
+
+      // Pochsalad Upload Logic
+      const pochsaladForm = document.getElementById('upload-pochsalad');
+      const uploadResult = document.getElementById('upload-result');
+
+      if (pochsaladForm) {
+        const fileInput = pochsaladForm.querySelector('input[name="file"]');
+        const dateInput = pochsaladForm.querySelector('input[name="date"]');
+
+        // Auto-fill date on file selection
+        fileInput?.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const filename = file.name;
+            // Parser logic: PochsaladSourceDec21_25.jpg
+            const datePart = filename.replace('PochsaladSource', '').replace('.jpg', '');
+            const match = datePart.match(/([A-Za-z]+)(\d+)_(\d+)/);
+            
+            if (match) {
+                 const [_, monthStr, dayStr, yearStr] = match;
+                 const months = {
+                  Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
+                  Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
+                 };
+                 const month = months[monthStr];
+                 const day = parseInt(dayStr);
+                 
+                 if (month !== undefined && !isNaN(day)) {
+                     const year = 2000 + parseInt(yearStr);
+                     // Format YYYY-MM-DD
+                     const isoDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                     if (dateInput) dateInput.value = isoDate;
+                 } 
+            }
+        });
+
+        pochsaladForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          uploadResult.textContent = 'Uploading...';
+          uploadResult.className = 'mt-4 text-sm font-medium text-gray-600';
+
+          const formData = new FormData(pochsaladForm);
+          const dateStr = formData.get('date');
+          
+          if (dateStr) {
+              const [y, m, d] = dateStr.split('-');
+              const date = new Date(parseInt(y), parseInt(m)-1, parseInt(d));
+              const contentDate = Math.floor(date.getTime() / 1000);
+              formData.append('content_date', contentDate.toString());
+          }
+          
+          formData.append('category', 'pochsalad');
+
+          try {
+            const res = await fetch('/api/media/upload', {
+              method: 'POST',
+              body: formData
+            });
+            const j = await res.json();
+            if (res.ok) {
+              uploadResult.textContent = 'Uploaded successfully!';
+              uploadResult.className = 'mt-4 text-sm font-medium text-green-600';
+              pochsaladForm.reset();
+            } else {
+              uploadResult.textContent = j.error || 'Upload failed';
+              uploadResult.className = 'mt-4 text-sm font-medium text-red-600';
+            }
+          } catch (err) {
+              uploadResult.textContent = 'Network error';
+              uploadResult.className = 'mt-4 text-sm font-medium text-red-600';
+          }
+        });
+      }
     </script>
   </body>
 </html>
