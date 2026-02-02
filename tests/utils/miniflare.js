@@ -51,6 +51,9 @@ export async function createTestEnv() {
             GLOBAL_CHAT: 'GlobalChat',
             POST_ROOM: 'PostRoom'
         },
+        sendEmailBindings: [
+            { name: "EMAIL" }
+        ],
         secrets: {
            JWT_SECRET: 'test-jwt-secret',
            ADMIN_API_KEY: 'test-admin-key'
