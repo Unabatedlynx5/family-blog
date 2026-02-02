@@ -35,7 +35,7 @@ if (token) {
     const env = locals.runtime?.env;
 
     if (env?.DB) {
-        const whereClause = "mime_type LIKE 'image/%'";
+        const whereClause = "mime_type LIKE 'image/%' AND category = 'general'";
         const mediaItems = await env.DB.prepare(`
           SELECT m.*, u.name as uploader_name 
           FROM media m
