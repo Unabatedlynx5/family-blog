@@ -1,0 +1,70 @@
+---
+import BaseHead from '../components/BaseHead.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import { SITE_TITLE, SITE_DESCRIPTION } from '../consts';
+import FormattedDate from '../components/FormattedDate.astro';
+
+export const prerender = false;
+
+// Check authentication
+const user = Astro.locals.user;
+if (!user) {
+  return Astro.redirect('/login');
+}
+
+// Get images from Pochsalad category
+const env = Astro.locals.runtime.env as any;
+const { results } = await env.DB.prepare(
+  "SELECT * FROM media WHERE category = 'pochsalad' ORDER BY content_date DESC"
+).all();
+
+interface Post {
+  slug: string;
+  href: string;
+  heroImage: string;
+  title: string;
+  pubDate: Date;
+}
+
+const posts: Post[] = (results || []).map((item: any) => {
+  return {
+    slug: item.id,
+    href: '/pochsalad/' + item.id, // Link to the detail page
+    heroImage: `/api/media/${item.id}`,
+    title: 'Pochsalad',
+    pubDate: item.content_date ? new Date(item.content_date * 1000) : new Date(item.created_at * 1000)
+  };
+});
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<BaseHead title={`Pochsalad | ${SITE_TITLE}`} description="Pochsalad Menu Archive" />
+	</head>
+	<body class="bg-none min-h-screen bg-[#f0f2f5] dark:bg-[#18191a] text-gray-900 dark:text-[#e4e6eb] antialiased transition-colors duration-300">
+		<Header />
+		<main class="w-[960px] max-w-[calc(100%-2em)] mx-auto p-3">
+            <h1 class="text-3xl font-bold mb-8 text-center">Pochsalad Archive</h1>
+			<section>
+				<ul class="flex flex-wrap gap-8 list-none m-0 p-0">
+					{
+						posts.map((post, index) => (
+							<li class={`${index === 0 ? 'w-full mb-4 text-center' : 'w-[calc(50%-1rem)] max-md:w-full max-md:text-center'}`}>
+								<a href={'/pochsalad/' + post.slug} class="block group transition duration-200 no-underline bg-white dark:bg-[#242526] rounded-xl p-4 hover:bg-gray-50 dark:hover:bg-[#3a3b3c]">
+									<img width={720} height={360} src={post.heroImage} alt="" class="mb-2 rounded-xl w-full h-80 object-cover object-top group-hover:shadow-xl transition-shadow duration-200" />
+									<h4 class={`m-0 text-black dark:text-white leading-none group-hover:text-accent transition-colors duration-200 ${index === 0 ? 'text-4xl' : 'text-2xl'}`}>{post.title}</h4>
+									<p class="m-0 text-gray-500 dark:text-[#b0b3b8] group-hover:text-accent transition-colors duration-200">
+										<FormattedDate date={post.pubDate} />
+									</p>
+								</a>
+							</li>
+						))
+					}
+				</ul>
+			</section>
+		</main>
+		<Footer />
+	</body>
+</html>

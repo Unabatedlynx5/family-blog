@@ -1,0 +1,53 @@
+---
+import BaseHead from '../../components/BaseHead.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import { SITE_TITLE } from '../../consts';
+import FormattedDate from '../../components/FormattedDate.astro';
+
+export const prerender = false;
+
+const { slug } = Astro.params;
+
+// Check authentication
+const user = Astro.locals.user;
+if (!user) {
+  return Astro.redirect('/login');
+}
+
+// Get item from DB
+const env = Astro.locals.runtime.env as any;
+const item = await env.DB.prepare('SELECT * FROM media WHERE id = ?').bind(slug).first();
+
+if (!item) {
+    return Astro.redirect('/404');
+}
+
+// Parse date for display
+const pubDate = item.content_date ? new Date(item.content_date * 1000) : new Date(item.created_at * 1000);
+const imgSrc = `/api/media/${item.id}`;
+const filename = 'Pochsalad';
+
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<BaseHead title={`Pochsalad | ${SITE_TITLE}`} description="Pochsalad Entry" />
+	</head>
+	<body class="bg-none min-h-screen bg-white dark:bg-[#18191a] text-gray-900 dark:text-[#e4e6eb] antialiased transition-colors duration-300">
+		<Header />
+		<main class="w-[960px] max-w-[calc(100%-2em)] mx-auto p-3">
+            <div class="mb-4 text-center">
+                 <div class="mb-2 text-gray-500">
+                    <FormattedDate date={pubDate} />
+                 </div>
+                 <h1 class="text-3xl font-bold mb-4">Pochsalad</h1>
+            </div>
+			<section class="flex justify-center">
+				<img src={imgSrc} alt={filename} class="max-w-full h-auto rounded-xl shadow-lg" />
+			</section>
+		</main>
+		<Footer />
+	</body>
+</html>

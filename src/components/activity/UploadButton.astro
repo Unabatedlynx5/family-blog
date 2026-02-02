@@ -1,0 +1,124 @@
+---
+---
+<div x-data="{ open: false }">
+    <button id="upload-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full shadow-lg flex items-center gap-2 transition-transform transform hover:scale-105">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+        </svg>
+        Upload Photos
+    </button>
+</div>
+
+<!-- Hidden Input -->
+<input type="file" id="file-input" multiple accept="image/*" class="hidden" />
+
+<!-- Modal -->
+<dialog id="upload-modal" class="bg-white dark:bg-[#242526] rounded-lg shadow-xl p-6 w-full max-w-lg backdrop:bg-black/50">
+    <h3 class="text-xl font-bold mb-4 text-[#1c1e21] dark:text-[#e4e6eb]">Upload Photos</h3>
+    
+    <div id="preview-area" class="grid grid-cols-3 gap-2 mb-4 max-h-60 overflow-y-auto">
+        <!-- Previews inserted here -->
+    </div>
+
+    <div class="flex justify-between items-center">
+        <span id="status-text" class="text-sm text-[#65676b] dark:text-[#b0b3b8]"></span>
+        <div class="flex gap-2">
+            <button id="cancel-btn" class="px-4 py-2 text-[#65676b] dark:text-[#b0b3b8] hover:bg-[#f0f2f5] dark:hover:bg-[#3a3b3c] rounded">Cancel</button>
+            <button id="confirm-btn" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">Upload</button>
+        </div>
+    </div>
+</dialog>
+
+<script>
+    const uploadBtn = document.getElementById('upload-btn');
+    const fileInput = document.getElementById('file-input') as HTMLInputElement;
+    const modal = document.getElementById('upload-modal') as HTMLDialogElement;
+    const cancelBtn = document.getElementById('cancel-btn');
+    const confirmBtn = document.getElementById('confirm-btn') as HTMLButtonElement;
+    const previewArea = document.getElementById('preview-area');
+    const statusText = document.getElementById('status-text');
+
+    let selectedFiles: File[] = [];
+
+    uploadBtn?.addEventListener('click', () => fileInput?.click());
+
+    fileInput?.addEventListener('change', (e) => {
+        if (fileInput.files && fileInput.files.length > 0) {
+            selectedFiles = Array.from(fileInput.files);
+            showModal();
+        }
+    });
+
+    cancelBtn?.addEventListener('click', () => {
+        modal.close();
+        fileInput.value = '';
+        selectedFiles = [];
+    });
+
+    confirmBtn?.addEventListener('click', async () => {
+        if (selectedFiles.length === 0) return;
+        
+        confirmBtn.disabled = true;
+        confirmBtn.innerText = 'Uploading...';
+        statusText!.innerText = `Uploading ${selectedFiles.length} photos...`;
+
+        try {
+            // Extract dimensions
+            const metadata: Record<string, { width: number, height: number }> = {};
+            
+            await Promise.all(selectedFiles.map(file => new Promise<void>((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    metadata[file.name] = { width: img.width, height: img.height };
+                    URL.revokeObjectURL(img.src);
+                    resolve();
+                };
+                img.onerror = () => resolve(); // Ignore errors, use default 0x0
+                img.src = URL.createObjectURL(file);
+            })));
+
+            const formData = new FormData();
+            selectedFiles.forEach(file => formData.append('files', file));
+            formData.append('metadata', JSON.stringify(metadata));
+
+            const res = await fetch('/api/activity/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!res.ok) throw new Error('Upload failed');
+
+            const data = await res.json();
+            statusText!.innerText = 'Upload complete!';
+            
+            // Reload page to show new activity
+            setTimeout(() => window.location.reload(), 1000);
+
+        } catch (err) {
+            console.error(err);
+            statusText!.innerText = 'Error uploading photos.';
+            statusText!.classList.add('text-red-500');
+            confirmBtn.disabled = false;
+            confirmBtn.innerText = 'Upload';
+        }
+    });
+
+    function showModal() {
+        previewArea!.innerHTML = '';
+        selectedFiles.forEach(file => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = document.createElement('img');
+                img.src = e.target?.result as string;
+                img.className = 'w-full h-24 object-cover rounded';
+                previewArea?.appendChild(img);
+            };
+            reader.readAsDataURL(file);
+        });
+        statusText!.innerText = `${selectedFiles.length} photos selected`;
+        statusText!.classList.remove('text-red-500');
+        confirmBtn.disabled = false;
+        confirmBtn.innerText = 'Upload';
+        modal.showModal();
+    }
+</script>

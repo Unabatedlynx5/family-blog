@@ -1,0 +1,49 @@
+---
+import FormattedDate from '../FormattedDate.astro';
+
+interface Props {
+  event: {
+    id: string;
+    created_at: number;
+    user_name: string;
+    user_avatar: string;
+    photos: {
+      id: string;
+      url: string;
+      width: number;
+      height: number;
+    }[];
+  };
+}
+
+const { event } = Astro.props;
+const photoCount = event.photos.length; // Actually previews are limited. We might need total count from DB query if we want "uploaded X photos".
+// For now, prompt assumes "preview of the batch (up to 3-4 thumbnails)".
+// We don't have total count in current feed query.
+---
+
+<div class="bg-white dark:bg-[#242526] rounded-lg shadow mb-6 overflow-hidden">
+  <div class="p-4 flex items-center gap-3 border-b border-[#e4e6eb] dark:border-[#3e4042]">
+    <img src={event.user_avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(event.user_name || 'User')}&background=random`} alt={event.user_name} class="w-10 h-10 rounded-full object-cover" />
+    <div class="flex-1">
+      <p class="font-bold text-[#1c1e21] dark:text-[#e4e6eb]">{event.user_name}</p>
+      <div class="text-sm text-[#65676b] dark:text-[#b0b3b8] flex items-center gap-1">
+          <span>Added photos</span> 
+          <span>&bull;</span>
+          <FormattedDate date={new Date(event.created_at * 1000)} />
+      </div>
+    </div>
+  </div>
+
+  <div class="p-2 cursor-pointer transition-opacity hover:opacity-90" onclick="window.startSlideshow()"> 
+    <!-- Note: On click, we launch global slideshow for now as per my interpretation -->
+    
+    <div class={`grid gap-1 ${event.photos.length === 1 ? 'grid-cols-1' : (event.photos.length === 2 ? 'grid-cols-2' : 'grid-cols-2 md:grid-cols-3')}`}>
+        {event.photos.map((photo, index) => (
+           <div class={`relative aspect-square overflow-hidden rounded ${index === 0 && event.photos.length === 3 ? 'md:row-span-2 md:h-full' : ''}`}>
+               <img src={photo.url} class="w-full h-full object-cover" loading="lazy" />
+           </div>
+        ))}
+    </div>
+  </div>
+</div>

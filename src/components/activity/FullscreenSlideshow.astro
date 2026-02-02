@@ -1,0 +1,194 @@
+---
+---
+<div id="slideshow-container" class="fixed inset-0 z-50 bg-black hidden flex flex-col justify-center items-center">
+    <!-- Close Button -->
+    <button id="close-slideshow" class="absolute top-4 right-4 text-white z-50 p-2 bg-black/50 rounded-full hover:bg-white/20">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+    </button>
+
+    <!-- Slide Content -->
+    <div id="slide-content" class="w-full h-full flex items-center justify-center p-4">
+        <!-- Images injected here -->
+    </div>
+
+    <!-- Controls/Info (Optional, maybe hidden for pure frame mode) -->
+    <div class="absolute bottom-4 left-0 right-0 text-center text-white/50 text-sm pointer-events-none">
+        <span id="slide-info"></span>
+    </div>
+</div>
+
+<script>
+    interface Photo {
+        id: string;
+        url: string;
+        width: number;
+        height: number;
+        user_name?: string;
+        created_at?: number;
+    }
+
+    class Slideshow {
+        container: HTMLElement;
+        content: HTMLElement;
+        photos: Photo[] = [];
+        queue: Photo[] = []; // Current working queue
+        currentIndex: number = 0;
+        timer: any;
+        interval: number = 15000;
+        isActive: boolean = false;
+
+        constructor() {
+            this.container = document.getElementById('slideshow-container')!;
+            this.content = document.getElementById('slide-content')!;
+            
+            document.getElementById('close-slideshow')?.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.stop();
+            });
+
+            // Tap to advance
+            this.container.addEventListener('click', (e) => {
+                if ((e.target as HTMLElement).closest('button')) return;
+                this.next();
+                this.resetTimer();
+            });
+        }
+
+        async start(initialPhotos: Photo[] | null = null) {
+            this.isActive = true;
+            this.container.classList.remove('hidden');
+            document.body.style.overflow = 'hidden'; // Prevent scrolling
+
+            if (initialPhotos && initialPhotos.length > 0) {
+                 // If provided specific photos (e.g. from event), play them then fetch more? 
+                 // Or typically just use them.
+                 // Requirement: "Slideshow uses shuffle/random mode across all photos"
+                 // So we usually just ignore initialPhotos for the global mode, 
+                 // but for specific event view we might use them.
+                 // For now, let's fetch global first.
+            }
+            
+            await this.fetchPhotos();
+            this.next();
+            this.resetTimer();
+        }
+
+        stop() {
+            this.isActive = false;
+            this.container.classList.add('hidden');
+            document.body.style.overflow = '';
+            clearTimeout(this.timer);
+        }
+
+        async fetchPhotos() {
+            try {
+                const res = await fetch('/api/activity/slideshow');
+                if (res.ok) {
+                    const data = await res.json();
+                    this.photos = data.photos;
+                    // Shuffle locally to be sure (Fisher-Yates)
+                    for (let i = this.photos.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [this.photos[i], this.photos[j]] = [this.photos[j], this.photos[i]];
+                    }
+                    this.queue = [...this.photos];
+                }
+            } catch (e) {
+                console.error("Failed to load slideshow photos", e);
+            }
+        }
+
+        resetTimer() {
+            clearTimeout(this.timer);
+            if (this.isActive) {
+                this.timer = setTimeout(() => this.next(), this.interval);
+            }
+        }
+
+        next() {
+            if (this.queue.length === 0) {
+                // Refill queue
+                this.queue = [...this.photos];
+                // Reshuffle
+                for (let i = this.queue.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [this.queue[i], this.queue[j]] = [this.queue[j], this.queue[i]];
+                }
+            }
+            
+            if (this.queue.length === 0) return; // No photos
+
+            // Layout Logic
+            const p1 = this.queue.shift()!;
+            const p2 = this.queue.length > 0 ? this.queue[0] : null;
+
+            const isP1Portrait = p1.height > p1.width;
+            const isP2Portrait = p2 ? (p2.height > p2.width) : false;
+
+            if (isP1Portrait && p2 && isP2Portrait) {
+                // Pair
+                this.queue.shift(); // Consume p2
+                this.renderPair(p1, p2);
+            } else {
+                // Single (Landscape or leftover portrait)
+                this.renderSingle(p1);
+            }
+        }
+
+        renderSingle(photo: Photo) {
+            this.content.innerHTML = `
+                <div class="relative w-full h-full flex items-center justify-center animate-fade-in">
+                     <img src="${photo.url}" class="max-h-full max-w-full object-contain shadow-2xl" alt="Photo" />
+                     <div class="absolute bottom-5 left-5 text-white/80 bg-black/30 px-3 py-1 rounded text-sm backdrop-blur-sm">
+                        ${photo.user_name || 'Relative'} &bull; ${new Date((photo.created_at || 0) * 1000).toLocaleDateString()}
+                     </div>
+                </div>
+            `;
+        }
+
+        renderPair(p1: Photo, p2: Photo) {
+            // Mobile: Stack or Side-by-side? 
+            // "On mobile: portrait pairs stack or remain side-by-side depending on viewport"
+            // We use flex-wrap or strict grid.
+            // On desktop: side-by-side. 
+            this.content.innerHTML = `
+                <div class="w-full h-full flex flex-row gap-4 justify-center items-center animate-fade-in px-4 md:px-20">
+                    <div class="flex-1 h-full flex items-center justify-center relative">
+                         <img src="${p1.url}" class="max-h-full w-full object-cover rounded-lg shadow-xl h-[85vh]" alt="Photo 1" />
+                         <div class="absolute bottom-2 left-2 text-white/80 bg-black/30 px-2 py-0.5 rounded text-xs backdrop-blur-sm">
+                            ${p1.user_name || ''}
+                         </div>
+                    </div>
+                    <div class="flex-1 h-full flex items-center justify-center relative">
+                         <img src="${p2.url}" class="max-h-full w-full object-cover rounded-lg shadow-xl h-[85vh]" alt="Photo 2" />
+                         <div class="absolute bottom-2 left-2 text-white/80 bg-black/30 px-2 py-0.5 rounded text-xs backdrop-blur-sm">
+                            ${p2.user_name || ''}
+                         </div>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    // Export to global scope so other components can call it
+    (window as any).startSlideshow = () => {
+        const slideshow = new Slideshow();
+        slideshow.start();
+    };
+</script>
+
+<script is:inline>
+  // Ensure the type exists on window for other scripts (optional hack if TS complains elsewhere)
+</script>
+
+<style>
+    .animate-fade-in {
+        animation: fadeIn 0.5s ease-in-out;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+</style>

@@ -58,22 +58,30 @@ export const POST: APIRoute = async ({ request, locals }) => {
     const id = crypto.randomUUID();
     const r2Key = `media/${locals.user!.sub}/${id}.${ext}`;
 
+    // Get optional metadata
+    const category = (formData.get('category') as string) || 'general';
+    const contentDateStr = formData.get('content_date') as string;
+    const contentDate = contentDateStr ? parseInt(contentDateStr) : null;
+
     // Upload to R2
     const fileBuffer = await file.arrayBuffer();
     await env.MEDIA.put(r2Key, fileBuffer, {
       httpMetadata: {
         contentType: file.type,
       },
+      customMetadata: {
+        category,
+        contentDate: contentDate ? String(contentDate) : '',
+      }
     });
 
     // Save metadata to DB
     const now = Math.floor(Date.now() / 1000);
-    // Schema: id, uploader_id, r2_key, mime_type, size, created_at
-    // Note: filename is not in schema. user_id -> uploader_id. content_type -> mime_type. size_bytes -> size.
+    // Schema: id, uploader_id, r2_key, mime_type, size, created_at, category, content_date
     await env.DB.prepare(
-      'INSERT INTO media (id, uploader_id, r2_key, mime_type, size, created_at) VALUES (?, ?, ?, ?, ?, ?)'
+      'INSERT INTO media (id, uploader_id, r2_key, mime_type, size, created_at, category, content_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
     )
-      .bind(id, locals.user!.sub, r2Key, file.type, file.size, now)
+      .bind(id, locals.user!.sub, r2Key, file.type, file.size, now, category, contentDate)
       .run();
 
     return new Response(

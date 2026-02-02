@@ -86,6 +86,19 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to be product
   - [x] Add comment functionality to blog posts.
     - [x] Add liking functionality to chat messages and comments. (Chat likes skipped for now)
   - [x] Add pagination to feed/posts API endpoints.
+  - [x] Create photos page
+    - [x] Create `src/pages/photos.astro` route.
+    - [x] Create `src/pages/api/media/gallery.ts` to fetch all image media.
+    - [x] Implement masonry or grid layout for photos.
+    - [x] Add lightbox/modal for viewing full-size images.
+    - [x] Add pagination or infinite scroll for the gallery.
+  - [ ] Create blog page
+    - [ ] Create `src/pages/blog.astro` route.
+    - [ ] Create `src/pages/api/posts/index.ts` to fetch blog posts with pagination.
+    - [ ] Implement blog list layout (title, excerpt, author, date).
+    - [ ] Create individual blog post page `src/pages/blog/[slug].astro`.
+    - [ ] Implement markdown rendering with astro mdx for blog content.
+    - [ ] Add comment section to blog posts.
   - [ ] Optimize D1 queries and add indexes where needed.
   - [ ] Implement caching for frequently accessed data (e.g., blog posts).
   - [ ] Add blog button to social layout for easy access. 
@@ -95,12 +108,6 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to be product
     - [x] Create `src/pages/api/members/index.ts` endpoint to fetch active users.
     - [x] Design member card component (Avatar, Name, Bio).
     - [x] Implement grid layout for member list.
-  - [ ] Create photos page
-    - [ ] Create `src/pages/photos.astro` route.
-    - [ ] Create `src/pages/api/media/gallery.ts` to fetch all image media.
-    - [ ] Implement masonry or grid layout for photos.
-    - [ ] Add lightbox/modal for viewing full-size images.
-    - [ ] Add pagination or infinite scroll for the gallery.
   - [ ] Create calendar page
     - [ ] Create `src/pages/calendar.astro` route.
     - [ ] Create `src/pages/api/calendar/events.ts` to fetch birthdays and events.

@@ -1,0 +1,303 @@
+---
+import SocialLayout from '../layouts/SocialLayout.astro';
+import AuthGuard from '../components/AuthGuard.astro';
+
+interface Photo {
+  id: string;
+  url: string;
+  name: string;
+  date: string;
+}
+
+interface MediaRow {
+    id: string;
+    uploader_id: string;
+    created_at: number;
+    uploader_name: string | null;
+    mime_type: string;
+    // other fields that might be returned by m.*
+    r2_key: string;
+    size: number;
+}
+
+// We'll fetch the first page server-side to SSR the initial view for speed/SEO
+// Then use client-side JS for infinite scroll/pagination if needed.
+let initialPhotos: Photo[] = [];
+let error: string | null = null;
+
+const token = Astro.cookies.get('accessToken')?.value;
+if (token) {
+  try {
+    // In many Cloudflare Astro setups, 'runtime' is available on locals,
+    // though the type definition in env.d.ts might be defined differently.
+    // We cast to a shape that matches the actual runtime behavior observed.
+    const locals = Astro.locals as unknown as { runtime: { env: Env } };
+    const env = locals.runtime?.env;
+
+    if (env?.DB) {
+        const whereClause = "mime_type LIKE 'image/%'";
+        const mediaItems = await env.DB.prepare(`
+          SELECT m.*, u.name as uploader_name 
+          FROM media m
+          LEFT JOIN users u ON m.uploader_id = u.id
+          WHERE ${whereClause}
+          ORDER BY m.created_at DESC
+          LIMIT 20
+        `).all<MediaRow>();
+
+        if (mediaItems?.results) {
+            initialPhotos = mediaItems.results.map((item) => ({
+                id: item.id,
+                url: `/api/media/${item.id}`,
+                name: item.uploader_name || 'Unknown',
+                date: new Date(item.created_at * 1000).toLocaleDateString()
+            }));
+        }
+    }
+  } catch (e) {
+    console.error("Error fetching photos server-side", e);
+    error = "Could not load photos.";
+  }
+}
+---
+
+<AuthGuard />
+
+<SocialLayout title="Photos">
+    <div class="bg-white dark:bg-[#242526] rounded-lg shadow p-4 mb-4">
+        <h1 class="text-2xl font-bold mb-4 text-[#1c1e21] dark:text-[#e4e6eb]">Family Photos 📸</h1>
+        
+        <!-- Toggle Layout Controls (Optional, demonstrating user choice) -->
+        <div class="flex gap-2 mb-6">
+            <button id="btn-masonry" class="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 dark:bg-[#3a3b3c] dark:text-[#e4e6eb] active-layout">
+                Masonry
+            </button>
+            <button id="btn-grid" class="px-3 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 dark:bg-[#3a3b3c] dark:text-[#b0b3b8]">
+                Grid
+            </button>
+        </div>
+
+        {error && <p class="text-red-500">{error}</p>}
+        
+        {initialPhotos.length === 0 && !error ? (
+             <p class="text-center py-8 text-gray-500">No photos shared yet. Be the first to post!</p>
+        ) : (
+            <div id="photo-gallery" class="columns-1 sm:columns-2 md:columns-3 gap-4 space-y-4">
+                {initialPhotos.map(photo => (
+                    <div class="break-inside-avoid mb-4 group relative cursor-pointer photo-item" 
+                         data-url={photo.url} 
+                         data-user={photo.name}
+                         data-date={photo.date}>
+                        <img 
+                            src={photo.url} 
+                            loading="lazy" 
+                            alt={`Posted by ${photo.name}`}
+                            class="w-full rounded-lg shadow-sm hover:shadow-md transition-shadow object-cover"
+                        />
+                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex flex-col justify-end p-2 text-white text-xs">
+                            <span class="font-bold">{photo.name}</span>
+                            <span>{photo.date}</span>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        )}
+        
+        <!-- Load More Button -->
+        <div class="text-center mt-8">
+            <button id="load-more" class="px-4 py-2 bg-[#e4e6eb] text-[#050505] font-semibold rounded-lg hover:bg-[#d8dadf] transition-colors dark:bg-[#3a3b3c] dark:text-[#e4e6eb] dark:hover:bg-[#4e4f50]">
+                Load More
+            </button>
+        </div>
+    </div>
+
+    <!-- Lightbox Modal -->
+    <div id="lightbox" class="fixed inset-0 z-[100] bg-black/90 hidden flex items-center justify-center p-4">
+        <button id="lightbox-close" class="absolute top-4 right-4 text-white hover:text-gray-300 z-[101]">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
+        <div class="relative max-w-5xl max-h-[90vh] flex flex-col items-center">
+            <img id="lightbox-img" src="" class="max-w-full max-h-[85vh] object-contain rounded-md" />
+            <div class="mt-4 text-white text-center">
+                <p id="lightbox-caption" class="text-lg font-semibold"></p>
+                <p id="lightbox-date" class="text-sm text-gray-400"></p>
+            </div>
+        </div>
+        
+        <!-- Nav buttons (todo: implement next/prev logic) -->
+    </div>
+</SocialLayout>
+
+<script>
+    // Client-side logic for Gallery
+    interface PhotoData {
+        id: string;
+        url: string;
+        uploader: { name: string };
+        created_at: number;
+    }
+    
+    interface Pagination {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+        hasMore: boolean;
+    }
+
+    interface GalleryResponse {
+        media: PhotoData[];
+        pagination: Pagination;
+    }
+
+    let currentPage = 1;
+    const limit = 20;
+    let isMasonry = true;
+    const gallery = document.getElementById('photo-gallery');
+    
+    // Layout switching
+    const btnMasonry = document.getElementById('btn-masonry');
+    const btnGrid = document.getElementById('btn-grid');
+
+    function setLayout(mode: 'masonry' | 'grid') {
+        if (!gallery) return;
+        isMasonry = mode === 'masonry';
+        if (isMasonry) {
+            gallery.className = "columns-1 sm:columns-2 md:columns-3 gap-4 space-y-4";
+            document.querySelectorAll('.photo-item img').forEach((el) => {
+                const img = el as HTMLImageElement;
+                img.classList.remove('h-48', 'w-full', 'object-cover');
+                img.parentElement?.classList.remove('h-48');
+            });
+            btnMasonry?.classList.add('bg-blue-100', 'text-blue-700', 'dark:bg-[#4e4f50]');
+            btnGrid?.classList.remove('bg-blue-100', 'text-blue-700', 'dark:bg-[#4e4f50]');
+        } else {
+            // Grid layout: fixed height squares
+            gallery.className = "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4";
+            document.querySelectorAll('.photo-item').forEach((item) => {
+                item.classList.add('h-48');
+                const img = item.querySelector('img');
+                img?.classList.add('h-full', 'w-full', 'object-cover');
+            });
+            btnGrid?.classList.add('bg-blue-100', 'text-blue-700', 'dark:bg-[#4e4f50]');
+            btnMasonry?.classList.remove('bg-blue-100', 'text-blue-700', 'dark:bg-[#4e4f50]');
+        }
+    }
+
+    btnMasonry?.addEventListener('click', () => setLayout('masonry'));
+    btnGrid?.addEventListener('click', () => setLayout('grid'));
+
+    // Lightbox Logic
+    const lightbox = document.getElementById('lightbox');
+    const lightboxImg = document.getElementById('lightbox-img') as HTMLImageElement | null;
+    const lightboxCaption = document.getElementById('lightbox-caption');
+    const lightboxDate = document.getElementById('lightbox-date');
+    const closeBtn = document.getElementById('lightbox-close');
+
+    function openLightbox(url: string, user: string, date: string) {
+        if (!lightbox || !lightboxImg) return;
+        lightboxImg.src = url;
+        if (lightboxCaption) lightboxCaption.textContent = `Posted by ${user}`;
+        if (lightboxDate) lightboxDate.textContent = date;
+        lightbox.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeLightbox() {
+        if (!lightbox) return;
+        lightbox.classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+
+    closeBtn?.addEventListener('click', closeLightbox);
+    lightbox?.addEventListener('click', (e) => {
+        if (e.target === lightbox) closeLightbox();
+    });
+    
+    // Attach click events to initial photos
+    function attachEvents() {
+        document.querySelectorAll('.photo-item').forEach(item => {
+            // Avoid double attaching if called multiple times
+            if (item.getAttribute('data-attached') === 'true') return;
+            item.setAttribute('data-attached', 'true');
+            
+            item.addEventListener('click', () => {
+                const url = item.getAttribute('data-url') || '';
+                const user = item.getAttribute('data-user') || 'Unknown';
+                const date = item.getAttribute('data-date') || '';
+                openLightbox(url, user, date);
+            });
+        });
+        
+        // Re-apply grid styles if needed
+        if (!isMasonry) setLayout('grid');
+    }
+
+    attachEvents();
+
+    // Load More Logic
+    const loadMoreBtn = document.getElementById('load-more');
+    
+    loadMoreBtn?.addEventListener('click', async () => {
+        currentPage++;
+        if (loadMoreBtn) loadMoreBtn.innerText = 'Loading...';
+        
+        try {
+            const res = await fetch(`/api/media/gallery?page=${currentPage}&limit=${limit}`);
+            if (!res.ok) throw new Error('Failed to load');
+            const data = await res.json() as GalleryResponse;
+            
+            if (data.media && data.media.length > 0) {
+                const fragment = document.createDocumentFragment();
+                
+                data.media.forEach((photo) => {
+                    const div = document.createElement('div');
+                    // Matches the initial server-rendered HTML structure
+                    div.className = "break-inside-avoid mb-4 group relative cursor-pointer photo-item";
+                    div.setAttribute('data-url', photo.url);
+                    div.setAttribute('data-user', photo.uploader.name || 'Unknown');
+                    const dateStr = new Date(photo.created_at * 1000).toLocaleDateString();
+                    div.setAttribute('data-date', dateStr);
+                    
+                    div.innerHTML = `
+                        <img 
+                            src="${photo.url}" 
+                            loading="lazy" 
+                            alt="Posted by ${photo.uploader.name}"
+                            class="w-full rounded-lg shadow-sm hover:shadow-md transition-shadow object-cover ${!isMasonry ? 'h-full' : ''}"
+                        />
+                         <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex flex-col justify-end p-2 text-white text-xs">
+                            <span class="font-bold">${photo.uploader.name || 'Unknown'}</span>
+                            <span>${dateStr}</span>
+                        </div>
+                    `;
+                    // If grid mode is active, we need to ensure the parent div has height
+                     if (!isMasonry) {
+                        div.classList.add('h-48');
+                    }
+                    fragment.appendChild(div);
+                });
+                
+                gallery?.appendChild(fragment);
+                attachEvents();
+                
+                if (loadMoreBtn) {
+                     if (data.pagination && currentPage >= data.pagination.totalPages) {
+                        loadMoreBtn.style.display = 'none';
+                    } else {
+                        loadMoreBtn.innerText = 'Load More';
+                    }
+                }
+            } else {
+                if (loadMoreBtn) loadMoreBtn.style.display = 'none';
+            }
+        } catch (err) {
+            console.error(err);
+             if (loadMoreBtn) loadMoreBtn.innerText = 'Error loading more';
+        }
+    });
+
+</script>
+</SocialLayout>
