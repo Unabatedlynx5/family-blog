@@ -17,8 +17,8 @@ export const GET: APIRoute = async ({ request, locals, url }) => {
     const limit = parseInt(url.searchParams.get('limit') || '20');
     const offset = (page - 1) * limit;
 
-    // Filter for images only
-    const whereClause = "mime_type LIKE 'image/%'";
+    // Filter for images only and exclude special categories like 'pochsalad'
+    const whereClause = "mime_type LIKE 'image/%' AND category = 'general'";
 
     const mediaItems = await env.DB.prepare(`
       SELECT m.*, u.name as uploader_name 
